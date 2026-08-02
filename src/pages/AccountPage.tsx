@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { User, Mail, LogOut, Save, Plus, Bell, Activity, X, CalendarDays } from 'lucide-react';
 
 import { DangerZone } from '../components/ui/DangerZone';
@@ -497,26 +497,84 @@ function BmiCalculator() {
 }
 
 // ─── Reminders ───────────────────────────────────────────────────────────────
-function RemindersSection() {
-  const [reminders, setReminders] = useState([
-    { id: 1, text: 'Period reminder — 3 days before', enabled: true },
-    { id: 2, text: 'Log daily mood at 8:00 PM', enabled: false },
-  ]);
-  const [isAdding, setIsAdding] = useState(false);
-  const [newType, setNewType] = useState('Period reminder');
-  const [newTiming, setNewTiming] = useState('1 day before');
+interface Reminder {
+  id: string;
+  type: string;
+  custom_type_name: string | null;
+  reminder_kind: string;
+  days_offset: number | null;
+  interval_minutes: number | null;
+  time_of_day: string | null;
+  specific_date: string | null;
+  is_enabled: boolean;
+}
 
-  const toggleReminder = (id: number) => {
-    setReminders(reminders.map(r => r.id === id ? { ...r, enabled: !r.enabled } : r));
+function formatReminderText(r: Reminder): string {
+  const label = r.type === 'Custom' ? (r.custom_type_name ?? 'Custom') : r.type;
+  switch (r.reminder_kind) {
+    case 'relative': {
+      if (r.days_offset === 0) return `${label} — on the day of period`;
+      if (r.days_offset !== null && r.days_offset < 0) return `${label} — ${Math.abs(r.days_offset)} days before period`;
+      return `${label} — ${r.days_offset} days after period`;
+    }
+    case 'repeating': {
+      const min = r.interval_minutes;
+      if (!min) return `${label} — repeating`;
+      if (min < 60) return `${label} — every ${min} minutes`;
+      const hrs = min / 60;
+      return `${label} — every ${hrs} hour${hrs !== 1 ? 's' : ''}`;
+    }
+    case 'fixed_time': {
+      if (!r.time_of_day) return `${label} — daily reminder`;
+      const [h, m] = r.time_of_day.split(':');
+      const d = new Date();
+      d.setHours(parseInt(h, 10), parseInt(m, 10));
+      const ampm = d.getHours() >= 12 ? 'PM' : 'AM';
+      const h12 = ((d.getHours() % 12) || 12);
+      const mm = d.getMinutes().toString().padStart(2, '0');
+      return `${label} — daily at ${h12}:${mm} ${ampm}`;
+    }
+    case 'specific_date':
+      return `${label} — on ${r.specific_date ?? 'a specific date'}`;
+    default:
+      return label;
+  }
+}
+
+function RemindersSection() {
+  const { user } = useAuth();
+  const [reminders, setReminders] = useState<Reminder[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!user) return;
+    const fetch = async () => {
+      const { data } = await supabase
+        .from('reminders')
+        .select('id, type, custom_type_name, reminder_kind, days_offset, interval_minutes, time_of_day, specific_date, is_enabled')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false });
+      if (data) setReminders(data as Reminder[]);
+      setLoading(false);
+    };
+    fetch();
+
+    // Realtime updates
+    const sub = supabase
+      .channel('account_reminders')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'reminders', filter: `user_id=eq.${user.id}` }, () => fetch())
+      .subscribe();
+    return () => { sub.unsubscribe(); };
+  }, [user]);
+
+  const toggle = async (id: string, current: boolean) => {
+    setReminders(prev => prev.map(r => r.id === id ? { ...r, is_enabled: !current } : r));
+    await supabase.from('reminders').update({ is_enabled: !current }).eq('id', id);
   };
 
-  const handleAdd = () => {
-    if (newType && newTiming) {
-      setReminders([...reminders, { id: Date.now(), text: `${newType} — ${newTiming}`, enabled: true }]);
-      setIsAdding(false);
-      setNewType('Period reminder');
-      setNewTiming('1 day before');
-    }
+  const remove = async (id: string) => {
+    setReminders(prev => prev.filter(r => r.id !== id));
+    await supabase.from('reminders').delete().eq('id', id);
   };
 
   return (
@@ -526,70 +584,49 @@ function RemindersSection() {
           <Bell size={18} className="text-amber-500" />
           Reminders
         </h2>
-        <motion.button 
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
-          onClick={() => setIsAdding(!isAdding)}
+        <a
+          href="/notifications"
           className="w-8 h-8 rounded-full bg-sage/20 flex items-center justify-center text-plum hover:bg-sage/40 transition-colors"
+          title="Manage reminders"
         >
-          {isAdding ? <X size={16} /> : <Plus size={16} />}
-        </motion.button>
+          <Plus size={16} />
+        </a>
       </div>
 
-      <AnimatePresence>
-        {isAdding && (
-          <motion.div 
-            initial={{ opacity: 0, height: 0, marginBottom: 0 }}
-            animate={{ opacity: 1, height: 'auto', marginBottom: 16 }}
-            exit={{ opacity: 0, height: 0, marginBottom: 0 }}
-            className="bg-blush/10 border border-blush/30 rounded-2xl p-4 overflow-hidden"
-          >
-            <p className="text-xs font-medium text-plum/70 mb-3">Add new reminder</p>
-            <div className="space-y-3 mb-3">
-              <input 
-                type="text" 
-                value={newType}
-                onChange={e => setNewType(e.target.value)}
-                placeholder="e.g. Log symptoms"
-                className="w-full bg-white/60 border border-sage/30 rounded-xl px-3 py-2 text-sm outline-none focus:border-coral/40"
-              />
-              <input 
-                type="text" 
-                value={newTiming}
-                onChange={e => setNewTiming(e.target.value)}
-                placeholder="e.g. 8:00 PM every day"
-                className="w-full bg-white/60 border border-sage/30 rounded-xl px-3 py-2 text-sm outline-none focus:border-coral/40"
-              />
-            </div>
-            <button 
-              onClick={handleAdd}
-              disabled={!newType || !newTiming}
-              className="w-full bg-coral text-white text-sm font-medium py-2 rounded-xl disabled:opacity-50 transition-all hover:bg-coral/90"
-            >
-              Save Reminder
-            </button>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
       <div className="space-y-2">
-        {reminders.length === 0 && !isAdding && (
-          <p className="text-sm text-plum/40 text-center py-4">No reminders set.</p>
+        {loading && (
+          <p className="text-sm text-plum/40 text-center py-4">Loading...</p>
+        )}
+        {!loading && reminders.length === 0 && (
+          <p className="text-sm text-plum/40 text-center py-4">
+            No reminders set. <a href="/notifications" className="text-coral underline">Add one</a>
+          </p>
         )}
         {reminders.map(r => (
-          <div key={r.id} className="flex items-center justify-between p-3 rounded-2xl bg-cream/50 border border-sage/10">
-            <span className={`text-sm ${r.enabled ? 'text-plum' : 'text-plum/40 line-through'}`}>{r.text}</span>
-            <button 
-              onClick={() => toggleReminder(r.id)}
-              className={`w-10 h-6 rounded-full flex items-center p-1 transition-colors ${r.enabled ? 'bg-coral' : 'bg-sage/40'}`}
-            >
-              <motion.div 
-                layout
-                className="w-4 h-4 rounded-full bg-white shadow-sm"
-                animate={{ x: r.enabled ? 16 : 0 }}
-                transition={{ type: "spring", stiffness: 500, damping: 30 }}
-              />
-            </button>
+          <div key={r.id} className="group flex items-center justify-between p-3 rounded-2xl bg-cream/50 border border-sage/10 hover:border-sage/20 transition-colors">
+            <span className={`text-sm flex-1 min-w-0 truncate ${r.is_enabled ? 'text-plum' : 'text-plum/40 line-through'}`}>
+              {formatReminderText(r)}
+            </span>
+            <div className="flex items-center gap-2 ml-2 flex-shrink-0">
+              <button
+                onClick={() => toggle(r.id, r.is_enabled)}
+                className={`w-10 h-6 rounded-full flex items-center p-1 transition-colors ${r.is_enabled ? 'bg-coral' : 'bg-sage/40'}`}
+              >
+                <motion.div
+                  layout
+                  className="w-4 h-4 rounded-full bg-white shadow-sm"
+                  animate={{ x: r.is_enabled ? 16 : 0 }}
+                  transition={{ type: 'spring', stiffness: 500, damping: 30 }}
+                />
+              </button>
+              <button
+                onClick={() => remove(r.id)}
+                className="opacity-0 group-hover:opacity-100 w-6 h-6 rounded-full flex items-center justify-center text-rose-400 hover:bg-rose-50 transition-all"
+                aria-label="Delete"
+              >
+                <X size={12} />
+              </button>
+            </div>
           </div>
         ))}
       </div>

@@ -1,39 +1,140 @@
 import { useEffect, useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { Bell } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../../context/AuthContext';
 import { ThemeToggle } from '../ui/ThemeToggle';
 import { supabase } from '../../lib/supabaseClient';
 
-// Local reminder type matching AccountPage's in-memory shape
 interface Reminder {
-  id: number;
-  text: string;
-  enabled: boolean;
+  id: string;
+  reminder_kind: string;
+  days_offset: number | null;
+  interval_minutes: number | null;
+  time_of_day: string | null;
+  specific_date: string | null;
+  is_enabled: boolean;
 }
 
-// "Due soon" = any enabled reminder that mentions "period" or "3 day" / "1 day"
-// (reminders are local-only, no DB table; we read them via a shared key in
-//  localStorage that AccountPage writes, else fall back to default list)
-const DEFAULT_REMINDERS: Reminder[] = [
-  { id: 1, text: 'Period reminder — 3 days before', enabled: true },
-  { id: 2, text: 'Log daily mood at 8:00 PM', enabled: false },
-];
+/** Returns true if the reminder is actually due right now */
+function isReminderDue(r: Reminder, nextPeriodDate: Date | null, acknowledged: Set<string>): boolean {
+  if (!r.is_enabled) return false;
+  if (acknowledged.has(r.id)) return false;
+
+  const now = new Date();
+  const todayStr = now.toISOString().slice(0, 10);
+
+  switch (r.reminder_kind) {
+    case 'relative': {
+      if (!nextPeriodDate || r.days_offset === null) return false;
+      const triggerDate = new Date(nextPeriodDate);
+      triggerDate.setDate(triggerDate.getDate() + r.days_offset); // days_offset is negative for "before"
+      return triggerDate.toISOString().slice(0, 10) === todayStr;
+    }
+    case 'specific_date': {
+      return r.specific_date === todayStr;
+    }
+    case 'fixed_time': {
+      if (!r.time_of_day) return false;
+      const [h, m] = r.time_of_day.split(':').map(Number);
+      const triggerTime = new Date();
+      triggerTime.setHours(h, m, 0, 0);
+      // Due if current time is past the trigger time today
+      return now >= triggerTime;
+    }
+    case 'repeating': {
+      if (!r.interval_minutes) return false;
+      const lastAckKey = `reminder_last_ack_${r.id}`;
+      const lastAck = localStorage.getItem(lastAckKey);
+      if (!lastAck) return true; // Never acknowledged = due
+      const elapsed = (now.getTime() - parseInt(lastAck)) / 1000 / 60; // minutes
+      return elapsed >= r.interval_minutes;
+    }
+    default:
+      return false;
+  }
+}
 
 function useReminders() {
-  const [reminders] = useState<Reminder[]>(() => {
-    try {
-      const stored = localStorage.getItem('evora-reminders');
-      return stored ? JSON.parse(stored) : DEFAULT_REMINDERS;
-    } catch {
-      return DEFAULT_REMINDERS;
-    }
-  });
+  const { user } = useAuth();
+  const location = useLocation();
+  const [dueCount, setDueCount] = useState(0);
 
-  // Count enabled reminders as "due soon" — simple heuristic
-  const dueSoonCount = reminders.filter(r => r.enabled).length;
-  return { reminders, dueSoonCount };
+  useEffect(() => {
+    if (!user) return;
+
+    // When user visits /notifications, acknowledge all due fixed_time and relative reminders for today
+    if (location.pathname === '/notifications') {
+      const ackKey = `reminder_acked_${new Date().toISOString().slice(0, 10)}`;
+      localStorage.setItem(ackKey, 'true');
+    }
+
+    const compute = async () => {
+      // Fetch all enabled reminders
+      const { data: reminders } = await supabase
+        .from('reminders')
+        .select('id, reminder_kind, days_offset, interval_minutes, time_of_day, specific_date, is_enabled')
+        .eq('user_id', user.id)
+        .eq('is_enabled', true);
+
+      if (!reminders || reminders.length === 0) {
+        setDueCount(0);
+        return;
+      }
+
+      // Fetch next period date from cycle_settings
+      let nextPeriodDate: Date | null = null;
+      const { data: cycle } = await supabase
+        .from('cycle_settings')
+        .select('last_period_start, avg_cycle_length')
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+      if (cycle?.last_period_start && cycle?.avg_cycle_length) {
+        let base = new Date(cycle.last_period_start);
+        const today = new Date();
+        // Roll forward to the next upcoming period
+        while (base <= today) {
+          base = new Date(base);
+          base.setDate(base.getDate() + cycle.avg_cycle_length);
+        }
+        nextPeriodDate = base;
+      }
+
+      // Load today's page-visit acknowledgement
+      const ackKey = `reminder_acked_${new Date().toISOString().slice(0, 10)}`;
+      const visitedToday = localStorage.getItem(ackKey) === 'true';
+
+      // Build acknowledged set: if user visited notifications today, ack all non-repeating
+      const acknowledged = new Set<string>();
+      if (visitedToday) {
+        (reminders as Reminder[]).forEach(r => {
+          if (r.reminder_kind !== 'repeating') acknowledged.add(r.id);
+        });
+      }
+
+      const due = (reminders as Reminder[]).filter(r => isReminderDue(r, nextPeriodDate, acknowledged));
+      setDueCount(due.length);
+    };
+
+    compute();
+
+    // Realtime subscription to re-compute on DB changes
+    const sub = supabase
+      .channel('topbar_reminders')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'reminders', filter: `user_id=eq.${user.id}` }, compute)
+      .subscribe();
+
+    // Re-check every minute (for time-based reminders)
+    const interval = setInterval(compute, 60_000);
+
+    return () => {
+      sub.unsubscribe();
+      clearInterval(interval);
+    };
+  }, [user, location.pathname]);
+
+  return { dueCount };
 }
 
 function useProfile() {
@@ -65,7 +166,7 @@ function useProfile() {
 
 export function TopBar() {
   const navigate = useNavigate();
-  const { dueSoonCount } = useReminders();
+  const { dueCount } = useReminders();
   const { initials, avatarUrl } = useProfile();
 
   return (
@@ -83,14 +184,14 @@ export function TopBar() {
       >
         <Bell size={18} />
         <AnimatePresence>
-          {dueSoonCount > 0 && (
+          {dueCount > 0 && (
             <motion.span
               initial={{ scale: 0 }}
               animate={{ scale: 1 }}
               exit={{ scale: 0 }}
               className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] bg-coral text-white text-[10px] font-bold rounded-full flex items-center justify-center px-1 leading-none"
             >
-              {dueSoonCount > 9 ? '9+' : dueSoonCount}
+              {dueCount > 9 ? '9+' : dueCount}
             </motion.span>
           )}
         </AnimatePresence>

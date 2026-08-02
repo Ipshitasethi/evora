@@ -196,25 +196,43 @@ export type Database = {
       }
       reminders: {
         Row: {
-          enabled: boolean | null
           id: string
-          reminder_type: string | null
-          timing: string | null
           user_id: string
+          type: string
+          custom_type_name: string | null
+          reminder_kind: string
+          days_offset: number | null
+          interval_minutes: number | null
+          time_of_day: string | null
+          specific_date: string | null
+          is_enabled: boolean
+          created_at: string | null
         }
         Insert: {
-          enabled?: boolean | null
           id?: string
-          reminder_type?: string | null
-          timing?: string | null
           user_id: string
+          type: string
+          custom_type_name?: string | null
+          reminder_kind: string
+          days_offset?: number | null
+          interval_minutes?: number | null
+          time_of_day?: string | null
+          specific_date?: string | null
+          is_enabled?: boolean
+          created_at?: string | null
         }
         Update: {
-          enabled?: boolean | null
           id?: string
-          reminder_type?: string | null
-          timing?: string | null
           user_id?: string
+          type?: string
+          custom_type_name?: string | null
+          reminder_kind?: string
+          days_offset?: number | null
+          interval_minutes?: number | null
+          time_of_day?: string | null
+          specific_date?: string | null
+          is_enabled?: boolean
+          created_at?: string | null
         }
         Relationships: [
           {
