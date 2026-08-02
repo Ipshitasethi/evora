@@ -1,0 +1,23 @@
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..900;1,9..144,300..900&family=Manrope:wght@200..800&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-cream text-plum font-sans antialiased selection:bg-blush selection:text-plum;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-serif tracking-tight text-plum;
+  }
+}
+
+/* Organic blob shape backgrounds */
+.bg-blob {
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath fill='%23F2C1B6' d='M45.7,-76.4C58.9,-69.3,69,-55.4,77.7,-41C86.4,-26.6,93.6,-11.7,92.5,2.7C91.4,17.1,82,31,73.1,44.2C64.2,57.4,55.8,70,43.5,77.6C31.2,85.2,15.6,87.8,-0.1,87.9C-15.8,88.1,-31.6,85.8,-45,78.7C-58.4,71.6,-69.4,59.7,-77.6,46C-85.8,32.3,-91.2,16.8,-92.3,1.1C-93.4,-14.6,-90.3,-30.5,-82.1,-43.3C-73.9,-56.1,-60.6,-65.8,-46.8,-72.6C-33,-79.4,-18.7,-83.3,-3.1,-79.1C12.5,-74.9,25,-62.6,45.7,-76.4Z' transform='translate(100 100)' /%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: cover;
+}

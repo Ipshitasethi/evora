@@ -1,0 +1,89 @@
+import { Link, useNavigate } from 'react-router-dom';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Menu, X } from 'lucide-react';
+import { useState } from 'react';
+import { Button } from '../ui/Button';
+import { useAuth } from '../../context/AuthContext';
+
+export function Navbar() {
+  const [menuOpen, setMenuOpen] = useState(false);
+  const { user, signOut } = useAuth();
+  const navigate = useNavigate();
+
+  return (
+    <header className="w-full py-5 px-6 md:px-12 flex items-center justify-between z-50 relative">
+      {/* Logo */}
+      <Link to="/" className="flex items-center gap-3 group">
+        <div className="w-10 h-10 rounded-full border-2 border-coral flex items-center justify-center bg-white/80 shadow-sm overflow-hidden">
+          <span className="text-[10px] text-coral font-serif font-bold">E</span>
+        </div>
+        <span className="font-serif text-2xl text-plum font-semibold tracking-tight group-hover:text-coral transition-colors duration-200">
+          Evora
+        </span>
+      </Link>
+
+      {/* Desktop nav */}
+      <nav className="hidden md:flex items-center gap-8">
+        <a href="#features" className="text-plum/70 hover:text-coral transition-colors text-sm font-medium">Features</a>
+        <a href="#testimonials" className="text-plum/70 hover:text-coral transition-colors text-sm font-medium">Stories</a>
+        {user ? (
+          <>
+            <Link to="/dashboard">
+              <Button variant="ghost" size="sm">Dashboard</Button>
+            </Link>
+            <Link to="/account">
+              <Button variant="ghost" size="sm">Account</Button>
+            </Link>
+            <Button variant="secondary" size="sm" onClick={signOut}>Sign Out</Button>
+          </>
+        ) : (
+          <>
+            <Link to="/login">
+              <Button variant="ghost" size="sm">Log In</Button>
+            </Link>
+            <Link to="/signup">
+              <Button variant="primary" size="sm">Get Started</Button>
+            </Link>
+          </>
+        )}
+      </nav>
+
+      {/* Mobile menu toggle */}
+      <button
+        className="md:hidden text-plum p-1"
+        onClick={() => setMenuOpen(!menuOpen)}
+        aria-label="Toggle menu"
+      >
+        {menuOpen ? <X size={22} /> : <Menu size={22} />}
+      </button>
+
+      {/* Mobile menu */}
+      <AnimatePresence>
+        {menuOpen && (
+          <motion.div
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            className="absolute top-full left-0 right-0 bg-cream/95 backdrop-blur-sm border-b border-sage/20 px-6 py-6 flex flex-col gap-4 md:hidden shadow-md"
+          >
+            <a href="#features" className="text-plum/70 hover:text-coral transition-colors font-medium" onClick={() => setMenuOpen(false)}>Features</a>
+            <a href="#testimonials" className="text-plum/70 hover:text-coral transition-colors font-medium" onClick={() => setMenuOpen(false)}>Stories</a>
+            <div className="flex flex-col gap-3 pt-2 border-t border-sage/20">
+              {user ? (
+                <>
+                  <Button variant="secondary" onClick={() => { navigate('/dashboard'); setMenuOpen(false); }}>Dashboard</Button>
+                  <Button variant="primary" onClick={() => { signOut(); setMenuOpen(false); }}>Sign Out</Button>
+                </>
+              ) : (
+                <>
+                  <Button variant="secondary" onClick={() => { navigate('/login'); setMenuOpen(false); }}>Log In</Button>
+                  <Button variant="primary" onClick={() => { navigate('/signup'); setMenuOpen(false); }}>Get Started</Button>
+                </>
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </header>
+  );
+}
