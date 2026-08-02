@@ -49,7 +49,7 @@ export function DashboardSidebar() {
                   className={[
                     'flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 relative',
                     active
-                      ? 'bg-sage text-plum'
+                      ? 'bg-coral/15 text-plum'
                       : 'text-plum/55 hover:text-plum hover:bg-blush/20',
                   ].join(' ')}
                 >
@@ -91,7 +91,7 @@ export function DashboardSidebar() {
               {active && (
                 <motion.div
                   layoutId="mobile-tab-active"
-                  className="absolute -top-1.5 w-5 h-[3px] bg-sage rounded-full"
+                  className="absolute -top-1.5 w-5 h-[3px] bg-coral rounded-full"
                   transition={{ type: 'spring', stiffness: 350, damping: 25 }}
                 />
               )}

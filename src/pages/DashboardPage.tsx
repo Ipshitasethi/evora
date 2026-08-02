@@ -128,7 +128,7 @@ export function DashboardPage() {
   const firstName = profile?.name?.split(' ')[0] ?? 'there';
   const cycleLen = cycle?.avg_cycle_length ?? 28;
   const periodLen = cycle?.avg_period_length ?? 5;
-  const { phase, nextPeriod, daysToNext, rolledLastPeriod } = useMemo(
+  const { dayInCycle, phase, nextPeriod, daysToNext, rolledLastPeriod } = useMemo(
     () => calculateCycleMetrics(cycle?.last_period_start ?? null, cycleLen, periodLen),
     [cycle?.last_period_start, cycleLen, periodLen]
   );
@@ -151,49 +151,6 @@ export function DashboardPage() {
             <p className="text-plum/70 mt-2 text-[15px] leading-relaxed max-w-2xl">{insight}</p>
           </Fade>
 
-          {/* ── Quick Action Tabs ── */}
-          <Fade delay={0.1} className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
-            {/* Log Symptoms Card */}
-            <button 
-              onClick={() => setIsLogModalOpen(true)}
-              className="bg-white/80 backdrop-blur-sm rounded-3xl border border-sage/20 shadow-sm p-5 text-left flex flex-col gap-3 hover:bg-white/95 transition-all group relative overflow-hidden"
-            >
-              <div className="flex justify-between items-start">
-                <div className="w-10 h-10 rounded-2xl bg-coral/10 flex items-center justify-center transition-transform group-hover:scale-105">
-                  <ClipboardPlus size={20} className="text-coral" />
-                </div>
-                <ArrowUpRight size={18} className="text-plum/25 group-hover:text-coral transition-colors" />
-              </div>
-              <div>
-                <h3 className="font-serif text-[17px] font-semibold text-plum">Log Symptoms</h3>
-                <p className="text-[13px] text-plum/50 mt-1 leading-relaxed pr-4">Track physical changes, energy, or cravings today.</p>
-              </div>
-            </button>
-
-            {/* Daily Mood Card */}
-            <button
-              onClick={() => setIsMoodModalOpen(true)}
-              className="bg-white/80 backdrop-blur-sm rounded-3xl border border-sage/20 shadow-sm p-5 text-left flex flex-col gap-3 hover:bg-white/95 transition-all group relative overflow-hidden"
-            >
-              <div className="flex justify-between items-start">
-                <div className="w-10 h-10 rounded-2xl bg-sage/40 flex items-center justify-center transition-transform group-hover:scale-105">
-                  {todayMood ? (
-                    <span className="text-xl">
-                      {[{emoji:'😊',v:'great'},{emoji:'😐',v:'okay'},{emoji:'😢',v:'low'},{emoji:'😠',v:'irritable'},{emoji:'😴',v:'tired'},{emoji:'😣',v:'unwell'}].find(m => m.v === todayMood)?.emoji || '😊'}
-                    </span>
-                  ) : (
-                    <Smile size={20} className="text-plum/70" />
-                  )}
-                </div>
-                <ArrowUpRight size={18} className="text-plum/25 group-hover:text-sage-700 transition-colors" />
-              </div>
-              <div>
-                <h3 className="font-serif text-[17px] font-semibold text-plum">Daily Mood</h3>
-                <p className="text-[13px] text-plum/50 mt-1 leading-relaxed pr-4">How are you feeling emotionally this morning?</p>
-              </div>
-            </button>
-          </Fade>
-
           {loading ? (
             /* Skeleton */
             <div className="grid md:grid-cols-2 gap-6">
@@ -206,48 +163,110 @@ export function DashboardPage() {
               {/* ── Cycle wheel + stats grid ── */}
               <div className="grid lg:grid-cols-5 gap-6 mb-8">
 
-                {/* Wheel — takes 3 cols */}
-                <Fade delay={0.12} className="lg:col-span-3">
-                  <div className="bg-white/80 backdrop-blur-sm rounded-3xl border border-sage/20 shadow-sm p-6 md:p-8 flex justify-center">
-                    <CycleWheel
-                      lastPeriodStart={rolledLastPeriod ?? startOfDay(new Date())}
-                      avgCycleLength={cycleLen}
-                      periodLength={periodLen}
-                      currentDateStr={format(new Date(), 'EEEE, do')}
-                    />
-                  </div>
-                </Fade>
+                {/* Left column — takes 3 cols */}
+                <div className="lg:col-span-3 flex flex-col gap-6">
+                  {/* Wheel */}
+                  <Fade delay={0.12}>
+                    <div className="bg-white/80 backdrop-blur-sm rounded-3xl border border-sage/20 shadow-sm p-6 md:p-8 flex justify-center">
+                      <CycleWheel
+                        lastPeriodStart={rolledLastPeriod ?? startOfDay(new Date())}
+                        avgCycleLength={cycleLen}
+                        periodLength={periodLen}
+                        currentDateStr={format(new Date(), 'EEEE, do')}
+                      />
+                    </div>
+                  </Fade>
+
+                  {/* ── Quick Action Tabs ── */}
+                  <Fade delay={0.15} className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {/* Log Symptoms Card */}
+                    <button 
+                      onClick={() => setIsLogModalOpen(true)}
+                      className="bg-coral/5 backdrop-blur-sm rounded-3xl border border-coral/10 shadow-sm p-5 text-left flex flex-col gap-3 hover:bg-coral/10 transition-all group relative overflow-hidden"
+                    >
+                      <div className="flex justify-between items-start">
+                        <div className="w-10 h-10 rounded-2xl bg-coral/10 flex items-center justify-center transition-transform group-hover:scale-105">
+                          <ClipboardPlus size={20} className="text-coral" />
+                        </div>
+                        <ArrowUpRight size={18} className="text-plum/25 group-hover:text-coral transition-colors" />
+                      </div>
+                      <div>
+                        <h3 className="font-serif text-[17px] font-semibold text-plum">Log Symptoms</h3>
+                        <p className="text-[13px] text-plum/50 mt-1 leading-relaxed pr-4">Track physical changes, energy, or cravings today.</p>
+                      </div>
+                    </button>
+
+                    {/* Daily Mood Card */}
+                    <button
+                      onClick={() => setIsMoodModalOpen(true)}
+                      className="bg-sage/15 backdrop-blur-sm rounded-3xl border border-sage/20 shadow-sm p-5 text-left flex flex-col gap-3 hover:bg-sage/25 transition-all group relative overflow-hidden"
+                    >
+                      <div className="flex justify-between items-start">
+                        <div className="w-10 h-10 rounded-2xl bg-sage/40 flex items-center justify-center transition-transform group-hover:scale-105">
+                          {todayMood ? (
+                            <span className="text-xl">
+                              {[{emoji:'😊',v:'great'},{emoji:'😐',v:'okay'},{emoji:'😢',v:'low'},{emoji:'😠',v:'irritable'},{emoji:'😴',v:'tired'},{emoji:'😣',v:'unwell'}].find(m => m.v === todayMood)?.emoji || '😊'}
+                            </span>
+                          ) : (
+                            <Smile size={20} className="text-plum/70" />
+                          )}
+                        </div>
+                        <ArrowUpRight size={18} className="text-plum/25 group-hover:text-plum transition-colors" />
+                      </div>
+                      <div>
+                        <h3 className="font-serif text-[17px] font-semibold text-plum">Daily Mood</h3>
+                        <p className="text-[13px] text-plum/50 mt-1 leading-relaxed pr-4">How are you feeling emotionally this morning?</p>
+                      </div>
+                    </button>
+                  </Fade>
+                </div>
 
                 {/* Stats column — takes 2 cols */}
                 <div className="lg:col-span-2 flex flex-col gap-4">
 
                   {/* Next period card */}
                   <Fade delay={0.18}>
-                    <div className="bg-white/80 backdrop-blur-sm rounded-3xl border border-sage/20 shadow-sm p-5 flex items-center gap-4">
-                      <div className="w-11 h-11 rounded-2xl bg-coral/10 flex items-center justify-center flex-shrink-0">
-                        <CalendarDays size={20} className="text-coral" />
+                    <div className="bg-white/80 backdrop-blur-sm rounded-3xl border border-sage/20 shadow-sm p-5 flex flex-col gap-3 hover:bg-white/95 transition-all">
+                      <div className="flex items-center gap-4">
+                        <div className="w-11 h-11 rounded-2xl bg-coral/10 flex items-center justify-center flex-shrink-0">
+                          <CalendarDays size={20} className="text-coral" />
+                        </div>
+                        <div>
+                          <p className="text-xs text-plum/45">Next period</p>
+                          <p className="font-serif text-lg text-plum font-medium">
+                            {nextPeriod ? format(nextPeriod, 'd MMM') : '—'}
+                          </p>
+                        </div>
                       </div>
-                      <div>
-                        <p className="text-xs text-plum/45">Next period</p>
-                        <p className="font-serif text-lg text-plum font-medium">
-                          {nextPeriod ? format(nextPeriod, 'd MMM') : '—'}
-                        </p>
-                      </div>
+                      <Link to="/analysis" className="text-[11px] text-plum/40 hover:text-coral flex items-center gap-1 font-medium mt-1 w-fit transition-colors">
+                        View trends <ArrowRight size={10} />
+                      </Link>
                     </div>
                   </Fade>
 
                   {/* Days remaining */}
                   <Fade delay={0.22}>
-                    <div className="bg-white/80 backdrop-blur-sm rounded-3xl border border-sage/20 shadow-sm p-5 flex items-center gap-4">
-                      <div className="w-11 h-11 rounded-2xl bg-lavender/50 flex items-center justify-center flex-shrink-0">
-                        <Timer size={20} className="text-plum/60" />
+                    <div className="bg-white/80 backdrop-blur-sm rounded-3xl border border-sage/20 shadow-sm p-5 flex flex-col gap-3 hover:bg-white/95 transition-all">
+                      <div className="flex items-center gap-4">
+                        <div className="w-11 h-11 rounded-2xl bg-lavender/50 flex items-center justify-center flex-shrink-0">
+                          <Timer size={20} className="text-plum/60" />
+                        </div>
+                        <div className="flex-1">
+                          <p className="text-xs text-plum/45">Days remaining</p>
+                          <p className="font-serif text-lg text-plum font-medium">
+                            {daysToNext !== null ? `${daysToNext} days` : '—'}
+                          </p>
+                        </div>
                       </div>
-                      <div>
-                        <p className="text-xs text-plum/45">Days remaining</p>
-                        <p className="font-serif text-lg text-plum font-medium">
-                          {daysToNext !== null ? `${daysToNext} days` : '—'}
-                        </p>
+                      <div className="w-full bg-sage/30 h-1.5 rounded-full overflow-hidden">
+                        <div 
+                          className="bg-plum h-full rounded-full transition-all duration-1000 ease-out" 
+                          style={{ width: `${dayInCycle && cycleLen ? Math.min(100, (dayInCycle / cycleLen) * 100) : 0}%` }} 
+                        />
                       </div>
+                      <Link to="/analysis" className="text-[11px] text-plum/40 hover:text-coral flex items-center gap-1 font-medium mt-1 w-fit transition-colors">
+                        View trends <ArrowRight size={10} />
+                      </Link>
                     </div>
                   </Fade>
 
