@@ -215,6 +215,8 @@ export function AnalysisPage() {
 
       } catch (e) {
         console.error(e);
+      } finally {
+        setLoading(false);
       }
     }
     loadData();
