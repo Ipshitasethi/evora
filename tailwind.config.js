@@ -19,8 +19,8 @@ export default {
         terracotta: "rgb(var(--color-terracotta) / <alpha-value>)",
       },
       fontFamily: {
-        serif: ["Manrope", "sans-serif"],
-        sans: ["Inter", "sans-serif"],
+        serif: ["Fraunces", "serif"],
+        sans: ["Manrope", "sans-serif"],
       },
       borderRadius: {
         '2xl': '1rem',

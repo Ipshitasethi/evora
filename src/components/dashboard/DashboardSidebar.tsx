@@ -5,11 +5,9 @@ import {
   MessageCircle,
   BarChart3,
   BookOpen,
-  UserCircle,
   LogOut,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
-import { ThemeToggle } from '../ui/ThemeToggle';
 import { EvoraLogo } from '../ui/EvoraLogo';
 
 
@@ -18,7 +16,6 @@ const NAV_ITEMS = [
   { path: '/chat', label: 'Chat', icon: MessageCircle },
   { path: '/analysis', label: 'Analysis', icon: BarChart3 },
   { path: '/articles', label: 'Articles', icon: BookOpen },
-  { path: '/account', label: 'Account', icon: UserCircle },
 ];
 
 export function DashboardSidebar() {
@@ -73,10 +70,6 @@ export function DashboardSidebar() {
           <LogOut size={18} />
           Sign Out
         </button>
-
-        <div className="px-3 mb-4">
-          <ThemeToggle />
-        </div>
 
         {/* Footer whisper */}
         <p className="text-[10px] text-plum/25 px-3">Evora v1.0 — built with care</p>

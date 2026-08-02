@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Outlet, Navigate } from 'react-router-dom';
 import { DashboardSidebar } from '../dashboard/DashboardSidebar';
+import { TopBar } from './TopBar';
 import { useAuth } from '../../context/AuthContext';
 import { supabase } from '../../lib/supabaseClient';
 
@@ -36,6 +37,7 @@ export function AppLayout() {
       <div className="fixed -bottom-40 -left-40 w-[450px] h-[450px] rounded-full bg-lavender/15 blur-3xl -z-10 pointer-events-none" />
 
       <DashboardSidebar />
+      <TopBar />
 
       {/* Main content — offset on desktop for sidebar */}
       <main className="lg:ml-56 pb-24 lg:pb-12">

@@ -12,6 +12,7 @@ import { ChatPage } from './pages/ChatPage';
 import { AnalysisPage } from './pages/AnalysisPage';
 import { ArticlesPage } from './pages/ArticlesPage';
 import { ArticleDetailPage } from './pages/ArticleDetailPage';
+import { NotificationsPage } from './pages/NotificationsPage';
 import { AppLayout } from './components/layout/AppLayout';
 import { PublicLayout } from './components/layout/PublicLayout';
 import type { ReactNode } from 'react';
@@ -88,6 +89,7 @@ function AppRoutes() {
         <Route path="/analysis" element={<AnalysisPage />} />
         <Route path="/articles" element={<ArticlesPage />} />
         <Route path="/articles/:id" element={<ArticleDetailPage />} />
+        <Route path="/notifications" element={<NotificationsPage />} />
       </Route>
 
       <Route path="*" element={<Navigate to="/" replace />} />
