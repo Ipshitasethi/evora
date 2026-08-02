@@ -136,7 +136,6 @@ src/
 
 - [ ] Expand beyond menstrual health to PCOS, UTI, and menopause support
 - [ ] Native mobile app / PWA install support
-- [ ] Google OAuth polish
 - [ ] Community-sourced safety/wellness content
 
 ---
