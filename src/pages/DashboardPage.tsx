@@ -11,6 +11,11 @@ import {
   ClipboardPlus,
   Smile,
   X,
+  Utensils,
+  Brain,
+  Activity as ActivityIcon,
+  Moon,
+  Droplet
 } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient';
 import { useAuth } from '../context/AuthContext';
@@ -97,6 +102,42 @@ function Fade({ children, delay = 0, className = '' }: { children: React.ReactNo
   );
 }
 
+// ─── Wellness Progress Ring ───────────────────────────────────────────────────
+function CircularProgress({ value, max, label, icon: Icon, colorClass, strokeClass }: { value: number, max: number, label: string, icon: React.ElementType, colorClass: string, strokeClass: string }) {
+  const percentage = Math.min(100, Math.max(0, (value / max) * 100));
+  const radius = 18;
+  const circumference = 2 * Math.PI * radius;
+  const strokeDashoffset = circumference - (percentage / 100) * circumference;
+
+  return (
+    <div className="flex flex-col items-center gap-2">
+      <div className="relative flex items-center justify-center w-[48px] h-[48px]">
+        {/* Background track */}
+        <svg className="w-full h-full transform -rotate-90">
+          <circle cx="24" cy="24" r="18" fill="transparent" stroke="currentColor" strokeWidth="4" className="text-sage/30" />
+          {/* Progress fill */}
+          {value > 0 && (
+            <circle
+              cx="24" cy="24" r="18"
+              fill="transparent"
+              stroke="currentColor"
+              strokeWidth="4"
+              strokeDasharray={circumference}
+              strokeDashoffset={strokeDashoffset}
+              strokeLinecap="round"
+              className={strokeClass}
+            />
+          )}
+        </svg>
+        <div className={`absolute ${colorClass}`}>
+          <Icon size={14} />
+        </div>
+      </div>
+      <span className="text-[10px] text-plum/50 font-medium tracking-wide uppercase">{label}</span>
+    </div>
+  );
+}
+
 // ─── Main ─────────────────────────────────────────────────────────────────────
 export function DashboardPage() {
   const { user } = useAuth();
@@ -105,21 +146,34 @@ export function DashboardPage() {
   const [cycle, setCycle] = useState<CycleSettings | null>(null);
   const [loading, setLoading] = useState(true);
   const [todayMood, setTodayMood] = useState<string | null>(null);
+  const [todaySleep, setTodaySleep] = useState<string | null>(null);
+  const [todayHydration, setTodayHydration] = useState<string | null>(null);
+  const [todayActivity, setTodayActivity] = useState<string | null>(null);
+  
   const [isLogModalOpen, setIsLogModalOpen] = useState(false);
+  const [logModalCategory, setLogModalCategory] = useState<string | undefined>(undefined);
   const [isMoodModalOpen, setIsMoodModalOpen] = useState(false);
+  const [dailyTips, setDailyTips] = useState<any[]>([]);
+  const [allTips, setAllTips] = useState<any[]>([]);
+  const [isWellnessModalOpen, setIsWellnessModalOpen] = useState(false);
 
   useEffect(() => {
     if (!user) return;
     (async () => {
       const today = format(new Date(), 'yyyy-MM-dd');
-      const [{ data: p }, { data: c }, { data: m }] = await Promise.all([
+      const [{ data: p }, { data: c }, { data: logs }] = await Promise.all([
         supabase.from('profiles').select('name, onboarding_completed').eq('id', user.id).maybeSingle(),
         supabase.from('cycle_settings').select('*').eq('user_id', user.id).maybeSingle(),
-        supabase.from('symptom_logs').select('value').eq('user_id', user.id).eq('log_date', today).eq('symptom', 'mood').maybeSingle(),
+        supabase.from('symptom_logs').select('symptom, value').eq('user_id', user.id).eq('log_date', today),
       ]);
       setProfile(p);
       setCycle(c);
-      if (m) setTodayMood(m.value);
+      if (logs) {
+        setTodayMood(logs.find(l => l.symptom === 'mood')?.value || null);
+        setTodaySleep(logs.find(l => l.symptom === 'sleep')?.value || null);
+        setTodayHydration(logs.find(l => l.symptom === 'hydration')?.value || null);
+        setTodayActivity(logs.find(l => l.symptom === 'activity')?.value || null);
+      }
       setLoading(false);
     })();
   }, [user]);
@@ -136,11 +190,77 @@ export function DashboardPage() {
   const greeting = `${getGreetingTime()}, ${firstName}.`;
   const insight = getDailyInsight(phase);
 
+  // Period start prompt logic
+  const rawLastPeriod = cycle?.last_period_start ? parseISO(cycle.last_period_start) : null;
+  const rawExpectedNext = rawLastPeriod ? addDays(rawLastPeriod, cycleLen) : null;
+  const daysLate = rawExpectedNext ? differenceInCalendarDays(startOfDay(new Date()), rawExpectedNext) : -1;
+  const isPeriodExpected = daysLate >= 0;
+  
+  const todayStr = format(new Date(), 'yyyy-MM-dd');
+  const dismissedKey = `dismissed_period_prompt_${todayStr}`;
+  const [isPromptDismissed, setIsPromptDismissed] = useState(localStorage.getItem(dismissedKey) === 'true');
+
+  const handleDismissPrompt = () => {
+    localStorage.setItem(dismissedKey, 'true');
+    setIsPromptDismissed(true);
+  };
+
+  const handleYesPeriod = () => {
+    setLogModalCategory('flow');
+    setIsLogModalOpen(true);
+    handleDismissPrompt();
+  };
+
+  // Fetch daily tips when phase changes
+  useEffect(() => {
+    if (!phase) return;
+    (async () => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data } = await (supabase as any)
+        .from('wellness_tips')
+        .select('*')
+        .eq('phase', phase.toLowerCase());
+      
+      if (data && data.length > 0) {
+        // Store all tips for the modal
+        setAllTips(data);
+
+        // Deterministically pick one per category for the dashboard card
+        const todayStr = format(new Date(), 'yyyy-MM-dd');
+        const hash = todayStr.split('').reduce((acc: number, char: string) => acc + char.charCodeAt(0), 0);
+        
+        const categories = ['nutrition', 'mindfulness', 'movement'];
+        const picked = categories.map(cat => {
+          const catTips = data.filter((t: any) => t.category === cat);
+          if (catTips.length === 0) return null;
+          return catTips[hash % catTips.length];
+        }).filter(Boolean);
+        
+        setDailyTips(picked);
+      }
+    })();
+  }, [phase]);
+
   const handleMoodSelect = (mood: string) => {
     setTodayMood(mood);
     showToast(`Mood logged: ${mood}`, 'success');
     setTimeout(() => setIsMoodModalOpen(false), 1200);
   };
+
+  // Determine personalized message based on snapshot
+  let snapshotMessage = "Log your daily wellness to see personalized insights.";
+  if (todaySleep !== null) {
+    const hours = parseFloat(todaySleep);
+    if (hours >= 7) snapshotMessage = "Great sleep last night — keep it up.";
+    else if (hours < 6) snapshotMessage = "You're a bit under your usual sleep — try winding down earlier tonight.";
+    else snapshotMessage = "You got a moderate amount of sleep last night.";
+  } else if (todayHydration === null) {
+    snapshotMessage = "Don't forget to log your water intake today.";
+  } else if (todayActivity === null) {
+    snapshotMessage = "Take a moment to stretch or move today.";
+  } else {
+    snapshotMessage = "Great job keeping up with your wellness tracking today!";
+  }
 
   return (
     <div className="max-w-5xl mx-auto px-5 md:px-10 pt-8">
@@ -160,6 +280,39 @@ export function DashboardPage() {
             </div>
           ) : (
             <>
+              {/* ── Period Expected Banner ── */}
+              {isPeriodExpected && !isPromptDismissed && (
+                <Fade delay={0.1} className="mb-6">
+                  <div className="bg-coral/10 border border-coral/30 rounded-3xl p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div className="flex items-center gap-4">
+                      <div className="w-10 h-10 bg-coral/20 rounded-full flex items-center justify-center text-coral flex-shrink-0">
+                        <CalendarDays size={20} />
+                      </div>
+                      <div>
+                        <h3 className="text-plum font-serif text-[17px] font-medium">
+                          {daysLate === 0 ? "Your period was expected today." : `Your period is now ${daysLate} day${daysLate === 1 ? '' : 's'} late.`}
+                        </h3>
+                        <p className="text-sm text-plum/70 mt-0.5">Has it started?</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3 self-end sm:self-auto">
+                      <button 
+                        onClick={handleDismissPrompt}
+                        className="px-4 py-2 rounded-xl text-sm font-medium text-plum/70 hover:bg-black/5 transition-colors"
+                      >
+                        Not yet
+                      </button>
+                      <button 
+                        onClick={handleYesPeriod}
+                        className="px-4 py-2 rounded-xl text-sm font-medium bg-coral text-white hover:bg-coral-dark transition-colors shadow-sm"
+                      >
+                        Yes, it started
+                      </button>
+                    </div>
+                  </div>
+                </Fade>
+              )}
+
               {/* ── Cycle wheel + stats grid ── */}
               <div className="grid lg:grid-cols-5 gap-6 mb-8">
 
@@ -223,6 +376,46 @@ export function DashboardPage() {
 
                 {/* Stats column — takes 2 cols */}
                 <div className="lg:col-span-2 flex flex-col gap-4">
+
+                  {/* ── Wellness Snapshot ── */}
+                  <Fade delay={0.25}>
+                    <div className="bg-white/80 backdrop-blur-sm rounded-3xl border border-sage/20 shadow-sm p-5 flex flex-col">
+                      <h3 className="font-serif text-plum font-semibold mb-4 text-[15px]">Wellness Snapshot</h3>
+                      
+                      <div className="flex items-center justify-around mb-5">
+                        <CircularProgress 
+                          value={todaySleep ? parseFloat(todaySleep) : 0} 
+                          max={8} 
+                          label="Sleep" 
+                          icon={Moon} 
+                          colorClass="text-indigo-500" 
+                          strokeClass="text-indigo-400" 
+                        />
+                        <CircularProgress 
+                          value={todayHydration ? parseFloat(todayHydration) : 0} 
+                          max={8} 
+                          label="Water" 
+                          icon={Droplet} 
+                          colorClass="text-cyan-500" 
+                          strokeClass="text-cyan-400" 
+                        />
+                        <CircularProgress 
+                          value={todayActivity ? 1 : 0} 
+                          max={1} 
+                          label="Activity" 
+                          icon={ActivityIcon} 
+                          colorClass="text-sage-700" 
+                          strokeClass="text-sage-600" 
+                        />
+                      </div>
+                      
+                      <div className="bg-sage/10 rounded-xl p-3 px-4 border border-sage/20">
+                        <p className="text-[13px] text-plum/70 leading-relaxed font-medium">
+                          {snapshotMessage}
+                        </p>
+                      </div>
+                    </div>
+                  </Fade>
 
                   {/* Next period card */}
                   <Fade delay={0.18}>
@@ -296,12 +489,111 @@ export function DashboardPage() {
                       </motion.div>
                     </Link>
                   </Fade>
+
+                  {/* Daily Insights Teaser */}
+                  {dailyTips.length > 0 && (
+                    <Fade delay={0.35}>
+                      <div className="bg-white/80 backdrop-blur-sm rounded-3xl border border-sage/20 shadow-sm overflow-hidden flex flex-col">
+                        <div className="flex items-center justify-between p-4 px-5 border-b border-sage/10 bg-cream/30">
+                          <h3 className="font-serif text-plum font-semibold">Daily Insights</h3>
+                          <button
+                            onClick={() => setIsWellnessModalOpen(true)}
+                            className="text-xs text-coral font-medium hover:text-coral/80 transition-colors flex items-center gap-1"
+                          >
+                            View All <ArrowRight size={12} />
+                          </button>
+                        </div>
+                        <div className="p-2 space-y-1">
+                          {dailyTips.map((tip, i) => (
+                            <div key={i} className="flex items-start gap-3 p-3 rounded-2xl hover:bg-cream/40 transition-colors">
+                              <div className="w-8 h-8 rounded-xl bg-white shadow-sm border border-sage/15 flex items-center justify-center flex-shrink-0 mt-0.5">
+                                {tip.category === 'nutrition' && <Utensils size={14} className="text-coral" />}
+                                {tip.category === 'mindfulness' && <Brain size={14} className="text-plum" />}
+                                {tip.category === 'movement' && <ActivityIcon size={14} className="text-sage-800" />}
+                              </div>
+                              <div>
+                                <h4 className="text-sm font-medium text-plum">{tip.title}</h4>
+                                <p className="text-[11px] text-plum/50 mt-0.5 leading-relaxed">{tip.description}</p>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </Fade>
+                  )}
+
                 </div>
               </div>
             </>
           )}
 
-      <LogModal isOpen={isLogModalOpen} onClose={() => setIsLogModalOpen(false)} />
+      <LogModal 
+        isOpen={isLogModalOpen} 
+        onClose={() => {
+          setIsLogModalOpen(false);
+          setLogModalCategory(undefined);
+        }}
+        initialCategory={logModalCategory}
+      />
+
+      {/* ── Wellness All Tips Modal ── */}
+      {isWellnessModalOpen && (
+        <div
+          className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-4 bg-plum/25 backdrop-blur-sm"
+          onClick={() => setIsWellnessModalOpen(false)}
+        >
+          <motion.div
+            initial={{ opacity: 0, y: 40 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 40 }}
+            transition={{ duration: 0.3, ease: 'easeOut' }}
+            onClick={(e) => e.stopPropagation()}
+            className="w-full max-w-lg max-h-[85vh] bg-cream rounded-3xl shadow-2xl flex flex-col overflow-hidden"
+          >
+            {/* Modal header */}
+            <div className="flex items-center justify-between px-6 py-4 border-b border-sage/20 bg-white/60 flex-shrink-0">
+              <div>
+                <h2 className="font-serif text-xl text-plum">Phase Insights</h2>
+                <p className="text-xs text-plum/45 mt-0.5 capitalize">{phase?.toLowerCase()} phase · all tips</p>
+              </div>
+              <button
+                onClick={() => setIsWellnessModalOpen(false)}
+                className="w-9 h-9 rounded-full bg-sage/20 hover:bg-sage/40 flex items-center justify-center text-plum/60 hover:text-plum transition-all"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {/* Modal body — scrollable */}
+            <div className="overflow-y-auto flex-1 p-5 space-y-6">
+              {(['nutrition', 'mindfulness', 'movement'] as const).map((cat) => {
+                const catTips = allTips.filter(t => t.category === cat);
+                if (catTips.length === 0) return null;
+                return (
+                  <div key={cat}>
+                    <div className="flex items-center gap-2 mb-3">
+                      <div className="w-7 h-7 rounded-lg bg-white shadow-sm border border-sage/20 flex items-center justify-center">
+                        {cat === 'nutrition' && <Utensils size={13} className="text-coral" />}
+                        {cat === 'mindfulness' && <Brain size={13} className="text-plum" />}
+                        {cat === 'movement' && <ActivityIcon size={13} className="text-teal-600" />}
+                      </div>
+                      <h3 className="font-serif text-base text-plum capitalize">{cat}</h3>
+                    </div>
+                    <div className="space-y-2">
+                      {catTips.map((tip: any) => (
+                        <div key={tip.id} className="bg-white/80 rounded-2xl border border-sage/15 p-4">
+                          <h4 className="text-sm font-semibold text-plum mb-1">{tip.title}</h4>
+                          <p className="text-[13px] text-plum/60 leading-relaxed">{tip.description}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </motion.div>
+        </div>
+      )}
 
       {/* Daily Mood Check-In Modal */}
       {isMoodModalOpen && (

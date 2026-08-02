@@ -12,10 +12,10 @@ import { EvoraLogo } from '../ui/EvoraLogo';
 
 
 const NAV_ITEMS = [
-  { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+  { path: '/dashboard', label: 'Cycle', icon: LayoutDashboard },
   { path: '/chat', label: 'Chat', icon: MessageCircle },
-  { path: '/analysis', label: 'Analysis', icon: BarChart3 },
-  { path: '/articles', label: 'Articles', icon: BookOpen },
+  { path: '/analysis', label: 'Insights', icon: BarChart3 },
+  { path: '/articles', label: 'Library', icon: BookOpen },
 ];
 
 export function DashboardSidebar() {
@@ -71,8 +71,7 @@ export function DashboardSidebar() {
           Sign Out
         </button>
 
-        {/* Footer whisper */}
-        <p className="text-[10px] text-plum/25 px-3">Evora v1.0 — built with care</p>
+
       </aside>
 
       {/* ── Mobile bottom tab bar ── */}

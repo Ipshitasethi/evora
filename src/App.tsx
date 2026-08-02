@@ -13,6 +13,7 @@ import { AnalysisPage } from './pages/AnalysisPage';
 import { ArticlesPage } from './pages/ArticlesPage';
 import { ArticleDetailPage } from './pages/ArticleDetailPage';
 import { NotificationsPage } from './pages/NotificationsPage';
+import { WellnessPage } from './pages/WellnessPage';
 import { AppLayout } from './components/layout/AppLayout';
 import { PublicLayout } from './components/layout/PublicLayout';
 import type { ReactNode } from 'react';
@@ -90,6 +91,7 @@ function AppRoutes() {
         <Route path="/articles" element={<ArticlesPage />} />
         <Route path="/articles/:id" element={<ArticleDetailPage />} />
         <Route path="/notifications" element={<NotificationsPage />} />
+        <Route path="/wellness" element={<WellnessPage />} />
       </Route>
 
       <Route path="*" element={<Navigate to="/" replace />} />

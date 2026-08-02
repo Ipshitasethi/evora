@@ -14,13 +14,13 @@ async function checkModels() {
     console.log('Fetching models...');
     const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`);
     const data = await response.json();
-    const availableModels = data.models?.map(m => m.name).filter(n => n.includes('gemini'));
+    const availableModels = data.models?.map((m: any) => m.name).filter((n: string) => n.includes('gemini'));
     console.log('Available Gemini Models:', availableModels);
     
     // Now test a 3.x model
     let targetModel = 'gemini-3.5-flash';
-    if (!availableModels.some(m => m.includes(targetModel))) {
-       targetModel = availableModels.find(m => m.includes('flash') && !m.includes('lite') && !m.includes('preview')) || availableModels[0];
+    if (!availableModels.some((m: string) => m.includes(targetModel))) {
+       targetModel = availableModels.find((m: string) => m.includes('flash') && !m.includes('lite') && !m.includes('preview')) || availableModels[0];
     }
     
     console.log(`Testing model: ${targetModel}`);

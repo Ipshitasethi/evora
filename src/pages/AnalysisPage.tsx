@@ -11,25 +11,12 @@ import {
   BarChart,
   Bar
 } from 'recharts';
-import { Sparkles, CalendarDays, BarChart3, Activity, Zap, Droplets, Smile, Moon } from 'lucide-react';
+import { Sparkles, CalendarDays, BarChart3, Activity, Zap, Droplets, Smile, Moon, GlassWater } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient';
 import { useAuth } from '../context/AuthContext';
 import { differenceInDays, parseISO, format, subDays, startOfDay } from 'date-fns';
 import { MonthlyCalendarView } from '../components/analysis/MonthlyCalendarView';
-
-// ─── Types ────────────────────────────────────────────────────────────────────
-interface PeriodGroup {
-  startDate: Date;
-  endDate: Date;
-  length: number;
-}
-
-interface Cycle {
-  startDate: Date;
-  length: number;
-  month: string;
-}
-
+import { groupPeriodLogsIntoCycles } from '../lib/cycleUtils';
 
 
 interface TrendData {
@@ -80,6 +67,8 @@ export function AnalysisPage() {
   const [trends, setTrends] = useState<TrendData[]>([]);
   const [patterns, setPatterns] = useState<Pattern[]>([]);
   const [periodLogs, setPeriodLogs] = useState<{log_date: string, flow_intensity?: string}[]>([]);
+  const [allRecentLogs, setAllRecentLogs] = useState<{ log_date: string; category: string; value: string }[]>([]);
+  const [timeRange, setTimeRange] = useState<'7d' | '30d'>('7d');
 
   useEffect(() => {
     if (!user) return;
@@ -87,7 +76,7 @@ export function AnalysisPage() {
     async function loadData() {
       setLoading(true);
       try {
-        // 1. Fetch period logs
+        // 1. Fetch period logs & group cycles
         const { data: pLogs } = await supabase
           .from('period_logs')
           .select('log_date, flow_intensity')
@@ -98,45 +87,7 @@ export function AnalysisPage() {
           setPeriodLogs(pLogs as any);
         }
 
-        // Group into periods
-        const periods: PeriodGroup[] = [];
-        if (pLogs && pLogs.length > 0) {
-          let currentStart = parseISO(pLogs[0].log_date as string);
-          let currentEnd = currentStart;
-
-          for (let i = 1; i < pLogs.length; i++) {
-            const d = parseISO(pLogs[i].log_date as string);
-            // If the next log is within 5 days, consider it the same period
-            if (differenceInDays(d, currentEnd) <= 5) {
-              currentEnd = d;
-            } else {
-              periods.push({
-                startDate: currentStart,
-                endDate: currentEnd,
-                length: differenceInDays(currentEnd, currentStart) + 1
-              });
-              currentStart = d;
-              currentEnd = d;
-            }
-          }
-          // Push last
-          periods.push({
-            startDate: currentStart,
-            endDate: currentEnd,
-            length: differenceInDays(currentEnd, currentStart) + 1
-          });
-        }
-
-        // Calculate cycles (requires at least 2 periods)
-        const cycles: Cycle[] = [];
-        for (let i = 0; i < periods.length - 1; i++) {
-          const cLength = differenceInDays(periods[i + 1].startDate, periods[i].startDate);
-          cycles.push({
-            startDate: periods[i].startDate,
-            length: cLength,
-            month: format(periods[i].startDate, 'MMM')
-          });
-        }
+        const { periods, cycles } = groupPeriodLogsIntoCycles((pLogs as any) || []);
 
         // 2. Fetch symptom logs
         const { data: sLogs } = await supabase
@@ -158,106 +109,38 @@ export function AnalysisPage() {
           .slice(0, 5);
         // setSymptomData(topSymptoms);
 
-        // 2b. Compute 14-day Trend Data
-        const fourteenDaysAgo = format(subDays(new Date(), 14), 'yyyy-MM-dd');
+        // 2b. Compute 60-day Trend Data
+        const sixtyDaysAgo = format(subDays(new Date(), 60), 'yyyy-MM-dd');
         const { data: recentSLogs } = await supabase
           .from('symptom_logs')
           .select('log_date, symptom, value')
           .eq('user_id', user!.id)
-          .gte('log_date', fourteenDaysAgo);
+          .gte('log_date', sixtyDaysAgo);
           
         const { data: recentPLogs } = await supabase
           .from('period_logs')
           .select('log_date, flow_intensity')
           .eq('user_id', user!.id)
-          .gte('log_date', fourteenDaysAgo);
+          .gte('log_date', sixtyDaysAgo);
 
-        const allRecentLogs: { log_date: string; category: string; value: string }[] = [];
+        const allLogs: { log_date: string; category: string; value: string }[] = [];
         if (recentSLogs) {
           recentSLogs.forEach(l => {
             if (l.log_date && l.symptom && l.value) {
-              allRecentLogs.push({ log_date: l.log_date, category: l.symptom, value: l.value });
+              allLogs.push({ log_date: l.log_date, category: l.symptom, value: l.value });
             }
           });
         }
         if (recentPLogs) {
           recentPLogs.forEach(l => {
             if (l.log_date && l.flow_intensity) {
-              allRecentLogs.push({ log_date: l.log_date, category: 'flow', value: l.flow_intensity });
+              allLogs.push({ log_date: l.log_date, category: 'flow', value: l.flow_intensity });
             }
           });
         }
+        setAllRecentLogs(allLogs);
 
-        const mapValue = (category: string, val: string): number => {
-          const v = val.toLowerCase();
-          if (category === 'flow') return { spotting: 1, light: 2, medium: 3, heavy: 4 }[v] || 0;
-          if (category === 'energy') return { low: 1, normal: 2, high: 3 }[v] || 0;
-          if (category === 'mood') return { unwell: 1, tired: 2, irritable: 3, low: 4, okay: 5, great: 6 }[v] || 0;
-          if (category === 'cramps' || category === 'pms') return { none: 0, mild: 1, moderate: 2, severe: 3 }[v] || 0;
-          if (category === 'sleep') return parseFloat(v) || 0;
-          return 0;
-        };
-
-        const categories = [
-          { id: 'flow', label: 'Flow', icon: <Droplets size={16} />, type: 'bar' },
-          { id: 'mood', label: 'Mood', icon: <Smile size={16} />, type: 'line' },
-          { id: 'energy', label: 'Energy', icon: <Zap size={16} />, type: 'bar' },
-          { id: 'cramps', label: 'Cramps', icon: <Activity size={16} />, type: 'bar' },
-          { id: 'sleep', label: 'Sleep', icon: <Moon size={16} />, type: 'bar' },
-        ];
-
-        const todayDate = startOfDay(new Date());
-        const last7Days = Array.from({length: 7}).map((_, i) => subDays(todayDate, 6 - i));
-        const trendResults: TrendData[] = [];
-
-        categories.forEach(cat => {
-          const catLogs = allRecentLogs.filter(l => l.category === cat.id);
-          if (catLogs.length === 0) return;
-          
-          const thisWeekLogs = catLogs.filter(l => differenceInDays(todayDate, parseISO(l.log_date)) <= 6);
-          const lastWeekLogs = catLogs.filter(l => differenceInDays(todayDate, parseISO(l.log_date)) > 6 && differenceInDays(todayDate, parseISO(l.log_date)) <= 13);
-          
-          const hasEnoughData = thisWeekLogs.length >= 3;
-          let statusLabel = 'Insufficient data';
-          
-          if (hasEnoughData) {
-            const thisWeekAvg = thisWeekLogs.reduce((acc, l) => acc + mapValue(cat.id, l.value), 0) / thisWeekLogs.length;
-            if (lastWeekLogs.length > 0) {
-              const lastWeekAvg = lastWeekLogs.reduce((acc, l) => acc + mapValue(cat.id, l.value), 0) / lastWeekLogs.length;
-              if (lastWeekAvg === 0) {
-                statusLabel = 'Trending UP';
-              } else {
-                const pct = Math.round(((thisWeekAvg - lastWeekAvg) / lastWeekAvg) * 100);
-                if (pct === 0) statusLabel = 'Stable';
-                else if (pct > 0) statusLabel = `+${pct}%`;
-                else statusLabel = `${pct}%`;
-              }
-            } else {
-              statusLabel = 'New Data';
-            }
-          }
-          
-          const chartData = last7Days.map(date => {
-            const dateStr = format(date, 'yyyy-MM-dd');
-            const log = thisWeekLogs.find(l => l.log_date === dateStr);
-            return {
-              day: format(date, 'EEE'),
-              value: log ? mapValue(cat.id, log.value) : 0
-            };
-          });
-
-          trendResults.push({
-            category: cat.id,
-            label: cat.label,
-            icon: cat.icon,
-            data: chartData,
-            hasEnoughData,
-            statusLabel,
-            type: cat.type as 'bar' | 'line'
-          });
-        });
-        setTrends(trendResults);
-
+        // 3. Compute Stats
         // 3. Compute Stats
         if (cycles.length >= 2) {
           setHasEnoughCycles(true);
@@ -290,7 +173,7 @@ export function AnalysisPage() {
               bg: "bg-coral/10",
               border: "border-coral/20"
             });
-          } else if (variance > 8) {
+          } else if (variance >= 5) {
             newPatterns.push({
               icon: <CalendarDays size={18} className="text-coral" />,
               text: "Your cycle length varies notably. This can be normal, but tracking helps spot irregularities.",
@@ -332,13 +215,89 @@ export function AnalysisPage() {
 
       } catch (e) {
         console.error(e);
-      } finally {
-        setLoading(false);
       }
     }
-
     loadData();
   }, [user]);
+
+  useEffect(() => {
+    if (allRecentLogs.length === 0) {
+      setTrends([]);
+      return;
+    }
+
+    const mapValue = (category: string, val: string): number => {
+      const v = val.toLowerCase();
+      if (category === 'flow') return { spotting: 1, light: 2, medium: 3, heavy: 4 }[v] || 0;
+      if (category === 'energy') return { low: 1, normal: 2, high: 3 }[v] || 0;
+      if (category === 'mood') return { unwell: 1, tired: 2, irritable: 3, low: 4, okay: 5, great: 6 }[v] || 0;
+      if (category === 'cramps' || category === 'pms') return { none: 0, mild: 1, moderate: 2, severe: 3 }[v] || 0;
+      if (category === 'sleep' || category === 'hydration') return parseFloat(v) || 0;
+      return 0;
+    };
+
+    const categories = [
+      { id: 'flow', label: 'Flow', icon: <Droplets size={16} />, type: 'bar' },
+      { id: 'mood', label: 'Mood', icon: <Smile size={16} />, type: 'line' },
+      { id: 'energy', label: 'Energy', icon: <Zap size={16} />, type: 'bar' },
+      { id: 'cramps', label: 'Cramps', icon: <Activity size={16} />, type: 'bar' },
+      { id: 'sleep', label: 'Sleep', icon: <Moon size={16} />, type: 'bar' },
+      { id: 'hydration', label: 'Hydration', icon: <GlassWater size={16} />, type: 'bar' },
+    ];
+
+    const todayDate = startOfDay(new Date());
+    const days = timeRange === '7d' ? 7 : 30;
+    const dateRange = Array.from({length: days}).map((_, i) => subDays(todayDate, (days - 1) - i));
+    const trendResults: TrendData[] = [];
+
+    categories.forEach(cat => {
+      const catLogs = allRecentLogs.filter(l => l.category === cat.id);
+      if (catLogs.length === 0) return;
+      
+      const currentPeriodLogs = catLogs.filter(l => differenceInDays(todayDate, parseISO(l.log_date)) < days);
+      const previousPeriodLogs = catLogs.filter(l => differenceInDays(todayDate, parseISO(l.log_date)) >= days && differenceInDays(todayDate, parseISO(l.log_date)) < days * 2);
+      
+      const hasEnoughData = currentPeriodLogs.length >= (timeRange === '7d' ? 3 : 5);
+      let statusLabel = 'Insufficient data';
+      
+      if (hasEnoughData) {
+        const currentAvg = currentPeriodLogs.reduce((acc, l) => acc + mapValue(cat.id, l.value), 0) / currentPeriodLogs.length;
+        if (previousPeriodLogs.length > 0) {
+          const previousAvg = previousPeriodLogs.reduce((acc, l) => acc + mapValue(cat.id, l.value), 0) / previousPeriodLogs.length;
+          if (previousAvg === 0) {
+            statusLabel = 'Trending UP';
+          } else {
+            const pct = Math.round(((currentAvg - previousAvg) / previousAvg) * 100);
+            if (pct === 0) statusLabel = 'Stable';
+            else if (pct > 0) statusLabel = `+${pct}%`;
+            else statusLabel = `${pct}%`;
+          }
+        } else {
+          statusLabel = 'New Data';
+        }
+      }
+      
+      const chartData = dateRange.map(date => {
+        const dateStr = format(date, 'yyyy-MM-dd');
+        const log = currentPeriodLogs.find(l => l.log_date === dateStr);
+        return {
+          day: timeRange === '7d' ? format(date, 'EEE') : format(date, 'MMM d'),
+          value: log ? mapValue(cat.id, log.value) : 0
+        };
+      });
+
+      trendResults.push({
+        category: cat.id,
+        label: cat.label,
+        icon: cat.icon,
+        data: chartData,
+        hasEnoughData,
+        statusLabel,
+        type: cat.type as 'bar' | 'line'
+      });
+    });
+    setTrends(trendResults);
+  }, [allRecentLogs, timeRange]);
 
   if (loading) {
     return <div className="p-10 flex justify-center"><p className="text-plum/50">Loading analysis...</p></div>;
@@ -351,7 +310,7 @@ export function AnalysisPage() {
       <Fade delay={0} className="mb-8 border-b border-sage/20 pb-4">
         <h1 className="font-serif text-3xl md:text-4xl text-plum leading-snug flex items-center gap-3">
           <BarChart3 className="text-coral" size={32} />
-          Cycle Analysis
+          Insights
         </h1>
         <p className="text-plum/50 text-sm mt-2">Insights and trends based on your logged data.</p>
       </Fade>
@@ -423,8 +382,8 @@ export function AnalysisPage() {
                     <ResponsiveContainer width="100%" height="100%">
                       <LineChart data={cycleTrendData} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
                         <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#C6D8C8" opacity={0.5} />
-                        <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fill: '#2C2422', opacity: 0.5, fontSize: 12 }} dy={10} />
-                        <YAxis domain={['dataMin - 2', 'dataMax + 2']} axisLine={false} tickLine={false} tick={{ fill: '#2C2422', opacity: 0.5, fontSize: 12 }} dx={-10} />
+                        <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fill: '#9E8E8B', fontSize: 12 }} dy={10} />
+                        <YAxis domain={['dataMin - 2', 'dataMax + 2']} axisLine={false} tickLine={false} tick={{ fill: '#9E8E8B', fontSize: 12 }} dx={-10} />
                         <Tooltip
                           contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)' }}
                           itemStyle={{ color: '#9B4938', fontWeight: 600 }}
@@ -479,7 +438,23 @@ export function AnalysisPage() {
       {/* ── Trend Analysis Section ── */}
       {trends.length > 0 && (
         <Fade delay={0.4} className="mb-8">
-          <h3 className="font-serif text-2xl text-plum mb-6">Trend Analysis</h3>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+            <h3 className="font-serif text-2xl text-plum">Trend Analysis</h3>
+            <div className="flex items-center bg-sage/15 p-1 rounded-xl border border-sage/30">
+              <button 
+                onClick={() => setTimeRange('7d')}
+                className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-all ${timeRange === '7d' ? 'bg-white shadow-sm text-plum' : 'text-plum/50 hover:text-plum/80'}`}
+              >
+                Last 7 Days
+              </button>
+              <button 
+                onClick={() => setTimeRange('30d')}
+                className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-all ${timeRange === '30d' ? 'bg-white shadow-sm text-plum' : 'text-plum/50 hover:text-plum/80'}`}
+              >
+                Last Month
+              </button>
+            </div>
+          </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             {trends.map(trend => (
               <div key={trend.category} className="bg-white/80 backdrop-blur-sm rounded-3xl p-5 border border-sage/20 shadow-sm flex flex-col h-48">
@@ -500,18 +475,18 @@ export function AnalysisPage() {
                 <div className="flex-1 w-full mt-auto relative">
                   {!trend.hasEnoughData ? (
                     <div className="absolute inset-0 flex items-center justify-center text-xs text-center text-plum/40 px-4">
-                      Not enough data in the last 7 days to chart.
+                      Not enough data in the {timeRange === '7d' ? 'last 7 days' : 'last month'} to chart.
                     </div>
                   ) : (
                     <ResponsiveContainer width="100%" height="100%">
                       {trend.type === 'bar' ? (
                         <BarChart data={trend.data} margin={{ top: 0, right: 0, bottom: 0, left: 0 }}>
-                          <XAxis dataKey="day" axisLine={false} tickLine={false} tick={{ fill: '#2C2422', opacity: 0.4, fontSize: 10 }} dy={5} />
+                          <XAxis dataKey="day" axisLine={false} tickLine={false} tick={{ fill: '#9E8E8B', fontSize: 10 }} dy={5} />
                           <Bar dataKey="value" fill="#9B4938" radius={[4, 4, 0, 0]} opacity={0.8} />
                         </BarChart>
                       ) : (
                         <LineChart data={trend.data} margin={{ top: 5, right: 5, bottom: 0, left: 5 }}>
-                          <XAxis dataKey="day" axisLine={false} tickLine={false} tick={{ fill: '#2C2422', opacity: 0.4, fontSize: 10 }} dy={5} />
+                          <XAxis dataKey="day" axisLine={false} tickLine={false} tick={{ fill: '#9E8E8B', fontSize: 10 }} dy={5} />
                           <Line type="monotone" dataKey="value" stroke="#9B4938" strokeWidth={2} dot={{ r: 3, fill: '#9B4938', strokeWidth: 0 }} />
                         </LineChart>
                       )}

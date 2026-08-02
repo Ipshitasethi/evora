@@ -1,14 +1,16 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { format, subDays, isSameDay } from 'date-fns';
-import { X, Droplets, Smile, Zap, Moon, Activity } from 'lucide-react';
+import { X, Droplets, Smile, Zap, Moon, Activity, Check, GlassWater, Minus, Plus } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from './Toast';
+import { updateCycleAverages } from '../../lib/cycleUtils';
 
 interface LogModalProps {
   isOpen: boolean;
   onClose: () => void;
+  initialCategory?: string;
 }
 
 const CATEGORIES = [
@@ -17,10 +19,11 @@ const CATEGORIES = [
   { id: 'cramps', label: 'Cramps', icon: Zap, color: 'text-rose-500', bg: 'bg-rose-500/10' },
   { id: 'pms', label: 'PMS', icon: Activity, color: 'text-purple-500', bg: 'bg-purple-500/10' },
   { id: 'sleep', label: 'Sleep', icon: Moon, color: 'text-indigo-500', bg: 'bg-indigo-500/10' },
+  { id: 'hydration', label: 'Hydration', icon: GlassWater, color: 'text-cyan-500', bg: 'bg-cyan-500/10' },
   { id: 'energy', label: 'Energy', icon: Zap, color: 'text-emerald-500', bg: 'bg-emerald-500/10' },
 ];
 
-const OPTIONS = {
+const OPTIONS: Record<string, string[]> = {
   flow: ['Light', 'Medium', 'Heavy', 'Spotting'],
   mood: ['Great', 'Okay', 'Low', 'Irritable', 'Tired', 'Unwell'],
   cramps: ['None', 'Mild', 'Moderate', 'Severe'],
@@ -28,17 +31,36 @@ const OPTIONS = {
   energy: ['High', 'Normal', 'Low'],
 };
 
-export function LogModal({ isOpen, onClose }: LogModalProps) {
+export function LogModal({ isOpen, onClose, initialCategory }: LogModalProps) {
   const { user } = useAuth();
   const { showToast } = useToast();
   
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
-  const [activeCategory, setActiveCategory] = useState<string | null>(null);
+  const [activeCategory, setActiveCategory] = useState<string | null>(initialCategory || null);
   const [showSettings, setShowSettings] = useState(false);
   const [hiddenCategories, setHiddenCategories] = useState<string[]>([]);
-  const [sleepHours, setSleepHours] = useState('');
+  const [sleepHours, setSleepHours] = useState('8');
+  const [hydrationCount, setHydrationCount] = useState('0');
+  // Map of category → saved value for the selected date
+  const [savedLogs, setSavedLogs] = useState<Record<string, string>>({});
+  const [loadingLogs, setLoadingLogs] = useState(false);
 
-  // Fetch hidden categories on mount
+  useEffect(() => {
+    if (isOpen && initialCategory) {
+      setActiveCategory(initialCategory);
+    } else if (!isOpen) {
+      setActiveCategory(null);
+      setSelectedDate(new Date());
+      setSavedLogs({});
+    }
+  }, [isOpen, initialCategory]);
+
+  useEffect(() => {
+    if (activeCategory === 'sleep') setSleepHours(savedLogs['sleep'] || '8');
+    if (activeCategory === 'hydration') setHydrationCount(savedLogs['hydration'] || '0');
+  }, [activeCategory, savedLogs]);
+
+  // Fetch hidden categories on open
   useEffect(() => {
     if (user && isOpen) {
       supabase.from('profiles').select('hidden_categories').eq('id', user.id).single()
@@ -50,18 +72,62 @@ export function LogModal({ isOpen, onClose }: LogModalProps) {
     }
   }, [user, isOpen]);
 
+  // Fetch existing logs whenever modal opens or date changes
+  useEffect(() => {
+    if (!user || !isOpen) return;
+    const dateStr = format(selectedDate, 'yyyy-MM-dd');
+    setLoadingLogs(true);
+
+    Promise.all([
+      // symptom_logs covers mood, cramps, pms, sleep, energy
+      supabase
+        .from('symptom_logs')
+        .select('symptom, value')
+        .eq('user_id', user.id)
+        .eq('log_date', dateStr),
+      // period_logs covers flow
+      supabase
+        .from('period_logs')
+        .select('flow_intensity')
+        .eq('user_id', user.id)
+        .eq('log_date', dateStr)
+        .maybeSingle(),
+    ]).then(([{ data: symptoms }, { data: periodLog }]) => {
+      const map: Record<string, string> = {};
+
+      if (symptoms) {
+        for (const row of symptoms) {
+          if (row.symptom && row.value) {
+            // Store capitalised so it matches OPTIONS keys
+            map[row.symptom] = row.value.charAt(0).toUpperCase() + row.value.slice(1);
+          }
+        }
+      }
+      if (periodLog?.flow_intensity) {
+        const fi = periodLog.flow_intensity;
+        map['flow'] = fi.charAt(0).toUpperCase() + fi.slice(1);
+      }
+
+      setSavedLogs(map);
+
+      // Pre-fill sleep input if we have a saved value
+      if (map['sleep']) setSleepHours(map['sleep']);
+      else setSleepHours('');
+
+      setLoadingLogs(false);
+    });
+  }, [user, isOpen, selectedDate]);
+
   // Generate last 7 days
   const dates = Array.from({ length: 7 }).map((_, i) => subDays(new Date(), i)).reverse();
 
-  const handleSave = async (category: string, value: string) => {
+  const handleSave = async (category: string, value: string, closeOnSave: boolean = true) => {
     if (!user) return;
     
     const dateStr = format(selectedDate, 'yyyy-MM-dd');
     
     try {
       if (category === 'flow') {
-        // Upsert to period_logs
-        // First check if exists
         const { data: existing } = await supabase
           .from('period_logs')
           .select('id')
@@ -74,8 +140,8 @@ export function LogModal({ isOpen, onClose }: LogModalProps) {
         } else {
           await supabase.from('period_logs').insert({ user_id: user.id, log_date: dateStr, flow_intensity: value.toLowerCase() });
         }
+        await updateCycleAverages(user.id);
       } else {
-        // Upsert to symptom_logs
         const { data: existing } = await supabase
           .from('symptom_logs')
           .select('id')
@@ -91,9 +157,15 @@ export function LogModal({ isOpen, onClose }: LogModalProps) {
         }
       }
       
+      // Optimistically update local saved map
+      const capitalised = value.charAt(0).toUpperCase() + value.slice(1);
+      setSavedLogs(prev => ({ ...prev, [category]: capitalised }));
+
       showToast(`Logged ${category} successfully`, 'success');
-      setActiveCategory(null);
-    } catch (err) {
+      if (closeOnSave) {
+        setActiveCategory(null);
+      }
+    } catch {
       showToast('Failed to save log', 'error');
     }
   };
@@ -169,18 +241,34 @@ export function LogModal({ isOpen, onClose }: LogModalProps) {
                   {/* Categories Grid */}
                   <p className="text-xs uppercase tracking-wide text-plum/40 mb-3 font-medium">What to log?</p>
                   <div className="grid grid-cols-3 gap-3">
-                    {visibleCategories.map(cat => (
-                      <button
-                        key={cat.id}
-                        onClick={() => setActiveCategory(cat.id)}
-                        className="flex flex-col items-center justify-center p-4 rounded-3xl bg-cream border border-sage/20 hover:border-coral/30 hover:bg-blush/10 transition-colors gap-2 group"
-                      >
-                        <div className={`w-10 h-10 rounded-2xl flex items-center justify-center ${cat.bg} transition-transform group-hover:scale-110`}>
-                          <cat.icon size={20} className={cat.color} />
-                        </div>
-                        <span className="text-xs font-medium text-plum/70">{cat.label}</span>
-                      </button>
-                    ))}
+                    {visibleCategories.map(cat => {
+                      const savedValue = savedLogs[cat.id];
+                      return (
+                        <button
+                          key={cat.id}
+                          onClick={() => setActiveCategory(cat.id)}
+                          className={`flex flex-col items-center justify-center p-4 rounded-3xl border transition-colors gap-2 group relative ${
+                            savedValue
+                              ? 'bg-coral/5 border-coral/25 hover:bg-coral/10'
+                              : 'bg-cream border-sage/20 hover:border-coral/30 hover:bg-blush/10'
+                          }`}
+                        >
+                          <div className={`w-10 h-10 rounded-2xl flex items-center justify-center ${cat.bg} transition-transform group-hover:scale-110`}>
+                            <cat.icon size={20} className={cat.color} />
+                          </div>
+                          <span className="text-xs font-medium text-plum/70">{cat.label}</span>
+                          {savedValue && (
+                            <span className="text-[10px] font-semibold text-coral/80 -mt-1">{savedValue}</span>
+                          )}
+                          {/* Logged checkmark badge */}
+                          {savedValue && (
+                            <span className="absolute top-2 right-2 w-4 h-4 bg-coral rounded-full flex items-center justify-center">
+                              <Check size={9} className="text-white" strokeWidth={3} />
+                            </span>
+                          )}
+                        </button>
+                      );
+                    })}
                   </div>
 
                   {visibleCategories.length === 0 && (
@@ -200,40 +288,81 @@ export function LogModal({ isOpen, onClose }: LogModalProps) {
                 <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }}>
                   <p className="text-sm text-plum/60 mb-6">
                     Logging for <span className="font-semibold text-plum">{isSameDay(selectedDate, new Date()) ? 'Today' : format(selectedDate, 'MMM d')}</span>
+                    {savedLogs[activeCategory] && (
+                      <span className="ml-2 text-xs text-coral font-medium">· Currently: {savedLogs[activeCategory]}</span>
+                    )}
                   </p>
                   
                   {activeCategory === 'sleep' ? (
-                    <div className="space-y-4">
-                      <label className="text-sm font-medium text-plum/70">Hours slept</label>
-                      <input 
-                        type="number" 
-                        value={sleepHours}
-                        onChange={e => setSleepHours(e.target.value)}
-                        placeholder="8"
-                        className="w-full px-5 py-4 rounded-2xl bg-cream border border-sage/30 text-lg text-plum outline-none focus:border-coral/50 focus:ring-2 focus:ring-coral/20"
-                      />
+                    <div className="space-y-6">
+                      <div className="flex flex-col items-center gap-6 py-4">
+                        <label className="text-sm font-medium text-plum/70">Hours slept</label>
+                        <span className="text-5xl font-serif text-plum font-medium">
+                          {sleepHours}
+                        </span>
+                        <input 
+                          type="range"
+                          min="0" max="24" step="0.5"
+                          value={sleepHours}
+                          onChange={(e) => setSleepHours(e.target.value)}
+                          className="w-full accent-coral h-2 bg-sage/20 rounded-lg appearance-none cursor-pointer"
+                        />
+                      </div>
                       <button 
-                        onClick={() => handleSave('sleep', sleepHours)}
-                        disabled={!sleepHours}
-                        className="w-full py-4 bg-coral text-white rounded-2xl font-medium mt-4 disabled:opacity-50"
+                        onClick={() => handleSave('sleep', sleepHours || '8')}
+                        className="w-full py-4 bg-coral text-white rounded-2xl font-medium disabled:opacity-50"
                       >
                         Save Sleep
                       </button>
                     </div>
+                  ) : activeCategory === 'hydration' ? (
+                    <div className="space-y-6">
+                      <div className="flex flex-col items-center gap-6 py-4">
+                        <label className="text-sm font-medium text-plum/70">Glasses of water today</label>
+                        <span className="text-5xl font-serif text-cyan-500 font-medium">
+                          {hydrationCount}
+                        </span>
+                        <input 
+                          type="range"
+                          min="0" max="20" step="1"
+                          value={hydrationCount}
+                          onChange={(e) => setHydrationCount(e.target.value)}
+                          className="w-full accent-cyan-500 h-2 bg-sage/20 rounded-lg appearance-none cursor-pointer"
+                        />
+                      </div>
+                      <button 
+                        onClick={() => handleSave('hydration', hydrationCount || '0')}
+                        className="w-full py-4 bg-cyan-500 text-white font-medium rounded-2xl hover:bg-cyan-600 transition-colors"
+                      >
+                        Save Hydration
+                      </button>
+                    </div>
                   ) : (
                     <div className="flex flex-col gap-3">
-                      {(OPTIONS as any)[activeCategory]?.map((opt: string) => (
-                        <button
-                          key={opt}
-                          onClick={() => handleSave(activeCategory, opt)}
-                          className="w-full py-4 px-6 rounded-2xl bg-cream border border-sage/20 text-left font-medium text-plum/80 hover:bg-blush/10 hover:border-coral/30 hover:text-plum transition-all flex items-center justify-between group"
-                        >
-                          {opt}
-                          <span className="text-coral opacity-0 -translate-x-2 transition-all group-hover:opacity-100 group-hover:translate-x-0">
-                            +
-                          </span>
-                        </button>
-                      ))}
+                      {OPTIONS[activeCategory]?.map((opt: string) => {
+                        const isCurrentlySaved = savedLogs[activeCategory]?.toLowerCase() === opt.toLowerCase();
+                        return (
+                          <button
+                            key={opt}
+                            onClick={() => handleSave(activeCategory, opt)}
+                            className={`w-full py-4 px-6 rounded-2xl border text-left font-medium transition-all flex items-center justify-between group ${
+                              isCurrentlySaved
+                                ? 'bg-coral/10 border-coral/40 text-plum'
+                                : 'bg-cream border-sage/20 text-plum/80 hover:bg-blush/10 hover:border-coral/30 hover:text-plum'
+                            }`}
+                          >
+                            <span className="flex items-center gap-2">
+                              {isCurrentlySaved && <Check size={14} className="text-coral" strokeWidth={2.5} />}
+                              {opt}
+                            </span>
+                            {isCurrentlySaved ? (
+                              <span className="text-xs text-coral font-medium">Logged</span>
+                            ) : (
+                              <span className="text-coral opacity-0 -translate-x-2 transition-all group-hover:opacity-100 group-hover:translate-x-0">+</span>
+                            )}
+                          </button>
+                        );
+                      })}
                     </div>
                   )}
                 </motion.div>
@@ -268,6 +397,13 @@ export function LogModal({ isOpen, onClose }: LogModalProps) {
                 </motion.div>
               )}
             </div>
+
+            {/* Loading overlay */}
+            {loadingLogs && (
+              <div className="absolute inset-0 bg-white/60 rounded-[2rem] flex items-center justify-center pointer-events-none">
+                <div className="w-6 h-6 border-2 border-coral/30 border-t-coral rounded-full animate-spin" />
+              </div>
+            )}
           </motion.div>
         </div>
       )}

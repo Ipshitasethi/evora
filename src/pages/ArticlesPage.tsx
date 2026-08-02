@@ -40,7 +40,7 @@ export function ArticlesPage() {
           <Fade delay={0} className="mb-8 border-b border-sage/20 pb-4">
             <h1 className="font-serif text-3xl md:text-4xl text-plum leading-snug flex items-center gap-3">
               <BookOpen className="text-coral" size={32} />
-              Learn & Discover
+              Library
             </h1>
             <p className="text-plum/50 text-sm mt-2">Articles and guides tailored to your well-being.</p>
           </Fade>

@@ -14,6 +14,7 @@ import {
 } from 'date-fns';
 import { supabase } from '../../lib/supabaseClient';
 import { useAuth } from '../../context/AuthContext';
+import { updateCycleAverages } from '../../lib/cycleUtils';
 
 interface PeriodLog {
   log_date: string;
@@ -101,6 +102,7 @@ export function MonthlyCalendarView({ logs, onLogUpdated }: MonthlyCalendarViewP
       }
     }
     
+    await updateCycleAverages(user.id);
     setSelectedDate(null);
     if (onLogUpdated) onLogUpdated();
   };
