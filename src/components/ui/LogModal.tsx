@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { format, subDays, isSameDay } from 'date-fns';
-import { X, Droplets, Smile, Zap, Moon, Activity, Check, GlassWater, Minus, Plus } from 'lucide-react';
+import { X, Droplets, Smile, Zap, Moon, Activity, Check, GlassWater } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from './Toast';

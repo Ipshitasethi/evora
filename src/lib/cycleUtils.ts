@@ -80,7 +80,10 @@ export async function updateCycleAverages(userId: string) {
     if (!logs || logs.length === 0) return;
 
     // 2. Group into periods and cycles
-    const { periods, cycles } = groupPeriodLogsIntoCycles(logs);
+    const validLogs = logs
+      .filter((l): l is { log_date: string; flow_intensity: string | null } => l.log_date !== null)
+      .map(l => ({ log_date: l.log_date, flow_intensity: l.flow_intensity ?? undefined }));
+    const { periods, cycles } = groupPeriodLogsIntoCycles(validLogs);
     
     if (periods.length === 0) return;
 
