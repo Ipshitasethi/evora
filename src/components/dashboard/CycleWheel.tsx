@@ -34,7 +34,7 @@ function buildPhases(cycleLen: number, periodLen: number): PhaseArc[] {
   const follicularEnd = Math.floor(cycleLen * 0.46);
   const ovulationEnd = follicularEnd + Math.max(1, Math.floor(cycleLen * 0.07));
   return [
-    { name: 'Menstrual', startDay: 1, endDay: periodLen, color: '#9B4938', strokeColor: '#9B4938' },
+    { name: 'Menstrual', startDay: 1, endDay: periodLen, color: 'rgb(var(--color-coral))', strokeColor: 'rgb(var(--color-coral))' },
     { name: 'Follicular', startDay: periodLen + 1, endDay: follicularEnd, color: '#F2C464', strokeColor: '#F2C464' },
     { name: 'Ovulation', startDay: follicularEnd + 1, endDay: ovulationEnd, color: '#D4829C', strokeColor: '#D4829C' },
     { name: 'Luteal', startDay: ovulationEnd + 1, endDay: cycleLen, color: '#BEB4D4', strokeColor: '#BEB4D4' },
@@ -58,7 +58,7 @@ function PhaseIllustration({ phase }: { phase: string }) {
       <path
         d="M 60 55 Q 100 20, 140 60"
         fill="none"
-        stroke="#FCF6F0"
+        stroke="rgb(var(--color-cream))"
         strokeWidth="16"
         strokeLinecap="round"
       />
@@ -74,7 +74,7 @@ function PhaseIllustration({ phase }: { phase: string }) {
       <motion.ellipse
         cx="50" cy="55"
         rx="26" ry="32"
-        fill="#FCF6F0"
+        fill="rgb(var(--color-cream))"
         stroke="#D4829C"
         strokeWidth="4"
         animate={
@@ -85,11 +85,11 @@ function PhaseIllustration({ phase }: { phase: string }) {
       {/* Uterus (Right) */}
       <motion.path
         d="M 130 50 C 130 30, 190 30, 190 50 C 195 90, 175 110, 160 110 C 145 110, 125 90, 130 50 Z"
-        fill="#FCF6F0"
-        stroke="#9B4938"
+        fill="rgb(var(--color-cream))"
+        stroke="rgb(var(--color-coral))"
         strokeWidth="4"
         animate={{
-          fill: phase === 'Luteal' ? '#F2C1B6' : '#FCF6F0',
+          fill: phase === 'Luteal' ? 'rgb(var(--color-blush))' : 'rgb(var(--color-cream))',
         }}
         transition={{ duration: 1.5 }}
       />
@@ -104,7 +104,7 @@ function PhaseIllustration({ phase }: { phase: string }) {
                 key={`m-${i}`}
                 cx={160 + (i - 2) * 12}
                 r="3.5"
-                fill="#9B4938"
+                fill="rgb(var(--color-coral))"
                 initial={{ cy: 80, opacity: 1 }}
                 animate={{ cy: 120, opacity: 0 }}
                 transition={{ duration: 1.5, repeat: Infinity, delay: i * 0.4 }}
@@ -251,7 +251,7 @@ export function CycleWheel({ lastPeriodStart, avgCycleLength, periodLength, curr
           {/* Background ring */}
           <circle
             cx={CENTER} cy={CENTER} r={RADIUS}
-            fill="none" stroke="#EDE8E4" strokeWidth={STROKE}
+            fill="none" stroke="rgb(var(--color-sage))" strokeWidth={STROKE} opacity={0.3}
           />
 
           {/* Phase arcs */}
@@ -295,7 +295,7 @@ export function CycleWheel({ lastPeriodStart, avgCycleLength, periodLength, curr
                 y1={CENTER + inner * Math.sin(rad)}
                 x2={CENTER + outer * Math.cos(rad)}
                 y2={CENTER + outer * Math.sin(rad)}
-                stroke="#FCF6F0" strokeWidth={2}
+                stroke="rgb(var(--color-cream))" strokeWidth={2}
               />
             );
           })}

@@ -1,12 +1,36 @@
-@import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..900;1,9..144,300..900&family=Manrope:wght@200..800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap');
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
+  :root {
+    --color-white: 255 255 255;
+    --color-black: 0 0 0;
+    --color-blush: 242 193 182;
+    --color-coral: 155 73 56;
+    --color-plum: 44 36 34;
+    --color-cream: 252 246 240;
+    --color-sage: 198 216 200;
+    --color-lavender: 230 226 235;
+    --color-terracotta: 192 83 58;
+  }
+
+  .dark {
+    --color-white: 35 32 31;
+    --color-black: 255 255 255;
+    --color-blush: 131 116 113;
+    --color-coral: 226 114 91;
+    --color-plum: 234 230 225;
+    --color-cream: 26 24 23;
+    --color-sage: 141 163 153;
+    --color-lavender: 0 165 142;
+    --color-terracotta: 217 91 66;
+  }
+
   body {
-    @apply bg-cream text-plum font-sans antialiased selection:bg-blush selection:text-plum;
+    @apply bg-cream text-plum font-sans antialiased selection:bg-blush selection:text-plum transition-colors duration-300;
   }
 
   h1, h2, h3, h4, h5, h6 {

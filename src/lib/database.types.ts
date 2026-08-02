@@ -170,6 +170,7 @@ export type Database = {
           id: string
           name: string | null
           onboarding_completed: boolean | null
+          theme: string | null
         }
         Insert: {
           age?: number | null
@@ -179,6 +180,7 @@ export type Database = {
           id: string
           name?: string | null
           onboarding_completed?: boolean | null
+          theme?: string | null
         }
         Update: {
           age?: number | null
@@ -188,6 +190,7 @@ export type Database = {
           id?: string
           name?: string | null
           onboarding_completed?: boolean | null
+          theme?: string | null
         }
         Relationships: []
       }

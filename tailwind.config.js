@@ -1,5 +1,6 @@
 /** @type {import('tailwindcss').Config} */
 export default {
+  darkMode: 'class',
   content: [
     "./index.html",
     "./src/**/*.{js,ts,jsx,tsx}",
@@ -7,17 +8,19 @@ export default {
   theme: {
     extend: {
       colors: {
-        blush: "#F2C1B6",
-        coral: "#9B4938",
-        plum: "#2C2422",
-        cream: "#FCF6F0",
-        sage: "#C6D8C8",
-        lavender: "#E6E2EB",
-        terracotta: "#C0533A",
+        white: "rgb(var(--color-white) / <alpha-value>)",
+        black: "rgb(var(--color-black) / <alpha-value>)",
+        blush: "rgb(var(--color-blush) / <alpha-value>)",
+        coral: "rgb(var(--color-coral) / <alpha-value>)",
+        plum: "rgb(var(--color-plum) / <alpha-value>)",
+        cream: "rgb(var(--color-cream) / <alpha-value>)",
+        sage: "rgb(var(--color-sage) / <alpha-value>)",
+        lavender: "rgb(var(--color-lavender) / <alpha-value>)",
+        terracotta: "rgb(var(--color-terracotta) / <alpha-value>)",
       },
       fontFamily: {
-        serif: ["Fraunces", "serif"],
-        sans: ["Manrope", "sans-serif"],
+        serif: ["Manrope", "sans-serif"],
+        sans: ["Inter", "sans-serif"],
       },
       borderRadius: {
         '2xl': '1rem',

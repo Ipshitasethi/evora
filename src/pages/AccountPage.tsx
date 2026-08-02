@@ -6,6 +6,7 @@ import { DangerZone } from '../components/ui/DangerZone';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../lib/supabaseClient';
 import { useToast } from '../components/ui/Toast';
+import { ThemeToggle } from '../components/ui/ThemeToggle';
 
 const GOALS = [
   { id: 'track_cycle', label: 'Track my cycle' },
@@ -596,6 +597,23 @@ function RemindersSection() {
   );
 }
 
+// ─── Appearance ────────────────────────────────────────────────────────────────
+function AppearanceSection() {
+  return (
+    <FadeCard delay={0.13} className="bg-white/80 backdrop-blur-sm rounded-3xl border border-sage/20 shadow-sm p-6">
+      <div className="flex items-center justify-between mb-2">
+        <div>
+          <h2 className="font-serif text-lg text-plum">Appearance</h2>
+          <p className="text-sm text-plum/45">Choose your preferred theme</p>
+        </div>
+      </div>
+      <div className="pt-2">
+        <ThemeToggle className="max-w-fit" />
+      </div>
+    </FadeCard>
+  );
+}
+
 // ─── Main Page ───────────────────────────────────────────────────────────────
 export function AccountPage() {
   return (
@@ -610,6 +628,7 @@ export function AccountPage() {
         <GoalsDetails />
         <BmiCalculator />
         <RemindersSection />
+        <AppearanceSection />
         
         <FadeCard delay={0.15}>
           <DangerZone />
