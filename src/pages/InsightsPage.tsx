@@ -23,7 +23,7 @@ interface TrendData {
   category: string;
   label: string;
   icon: React.ReactNode;
-  data: { day: string; value: number }[];
+  data: { day: string; value: number | null }[];
   hasEnoughData: boolean;
   statusLabel: string;
   type: 'bar' | 'line';
