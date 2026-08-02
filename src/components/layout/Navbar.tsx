@@ -24,8 +24,8 @@ export function Navbar() {
         <a href="#testimonials" className="text-plum/70 hover:text-coral transition-colors text-sm font-medium">Stories</a>
         {user ? (
           <>
-            <Link to="/dashboard">
-              <Button variant="ghost" size="sm">Dashboard</Button>
+            <Link to="/cycle">
+              <Button variant="ghost" size="sm">Cycle</Button>
             </Link>
             <Link to="/account">
               <Button variant="ghost" size="sm">Account</Button>
@@ -67,7 +67,7 @@ export function Navbar() {
             <div className="flex flex-col gap-3 pt-2 border-t border-sage/20">
               {user ? (
                 <>
-                  <Button variant="secondary" onClick={() => { navigate('/dashboard'); setMenuOpen(false); }}>Dashboard</Button>
+                  <Button variant="secondary" onClick={() => { navigate('/cycle'); setMenuOpen(false); }}>Cycle</Button>
                   <Button variant="primary" onClick={() => { signOut(); setMenuOpen(false); }}>Sign Out</Button>
                 </>
               ) : (

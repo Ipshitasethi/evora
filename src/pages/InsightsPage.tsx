@@ -50,7 +50,7 @@ function Fade({ children, delay = 0, className = '' }: { children: React.ReactNo
   );
 }
 
-export function AnalysisPage() {
+export function InsightsPage() {
   const { user } = useAuth();
   const [loading, setLoading] = useState(true);
 
@@ -76,68 +76,44 @@ export function AnalysisPage() {
     async function loadData() {
       setLoading(true);
       try {
-        // 1. Fetch period logs & group cycles
-        const { data: pLogs } = await supabase
-          .from('period_logs')
-          .select('log_date, flow_intensity')
-          .eq('user_id', user!.id)
-          .order('log_date', { ascending: true });
+        // 1. Fetch data in parallel to avoid waterfalling
+        const sixtyDaysAgo = format(subDays(new Date(), 60), 'yyyy-MM-dd');
 
-        if (pLogs) {
-          setPeriodLogs(pLogs as any);
-        }
+        const [pLogsRes, recentSLogsRes] = await Promise.all([
+          supabase.from('period_logs').select('log_date, flow_intensity').eq('user_id', user!.id).order('log_date', { ascending: true }),
+          supabase.from('symptom_logs').select('log_date, symptom, value').eq('user_id', user!.id).gte('log_date', sixtyDaysAgo)
+        ]);
 
-        const { periods, cycles } = groupPeriodLogsIntoCycles((pLogs as any) || []);
+        const pLogs = pLogsRes.data || [];
+        const recentSLogs = recentSLogsRes.data || [];
 
-        // 2. Fetch symptom logs
-        const { data: sLogs } = await supabase
-          .from('symptom_logs')
-          .select('symptom')
-          .eq('user_id', user!.id);
+        // 2. Process data
+        const { periods, cycles } = groupPeriodLogsIntoCycles(pLogs as any);
 
         const symCounts: Record<string, number> = {};
-        if (sLogs) {
-          sLogs.forEach(log => {
-            if (log.symptom) {
-              symCounts[log.symptom] = (symCounts[log.symptom] || 0) + 1;
-            }
-          });
-        }
+        recentSLogs.forEach(log => {
+          if (log.symptom) {
+            symCounts[log.symptom] = (symCounts[log.symptom] || 0) + 1;
+          }
+        });
         const topSymptoms = Object.entries(symCounts)
           .map(([name, count]) => ({ name, count }))
           .sort((a, b) => b.count - a.count)
           .slice(0, 5);
-        // setSymptomData(topSymptoms);
 
-        // 2b. Compute 60-day Trend Data
-        const sixtyDaysAgo = format(subDays(new Date(), 60), 'yyyy-MM-dd');
-        const { data: recentSLogs } = await supabase
-          .from('symptom_logs')
-          .select('log_date, symptom, value')
-          .eq('user_id', user!.id)
-          .gte('log_date', sixtyDaysAgo);
-          
-        const { data: recentPLogs } = await supabase
-          .from('period_logs')
-          .select('log_date, flow_intensity')
-          .eq('user_id', user!.id)
-          .gte('log_date', sixtyDaysAgo);
+        const recentPLogs = pLogs.filter(l => l.log_date && l.log_date >= sixtyDaysAgo);
 
         const allLogs: { log_date: string; category: string; value: string }[] = [];
-        if (recentSLogs) {
-          recentSLogs.forEach(l => {
-            if (l.log_date && l.symptom && l.value) {
-              allLogs.push({ log_date: l.log_date, category: l.symptom, value: l.value });
-            }
-          });
-        }
-        if (recentPLogs) {
-          recentPLogs.forEach(l => {
-            if (l.log_date && l.flow_intensity) {
-              allLogs.push({ log_date: l.log_date, category: 'flow', value: l.flow_intensity });
-            }
-          });
-        }
+        recentSLogs.forEach(l => {
+          if (l.log_date && l.symptom && l.value) {
+            allLogs.push({ log_date: l.log_date, category: l.symptom, value: l.value });
+          }
+        });
+        recentPLogs.forEach(l => {
+          if (l.log_date && l.flow_intensity) {
+            allLogs.push({ log_date: l.log_date, category: 'flow', value: l.flow_intensity });
+          }
+        });
         setAllRecentLogs(allLogs);
 
         // 3. Compute Stats
@@ -302,7 +278,20 @@ export function AnalysisPage() {
   }, [allRecentLogs, timeRange]);
 
   if (loading) {
-    return <div className="p-10 flex justify-center"><p className="text-plum/50">Loading analysis...</p></div>;
+    return (
+      <div className="p-8 max-w-6xl mx-auto space-y-8 animate-pulse">
+        <div className="h-8 bg-plum/5 rounded-lg w-48 mb-8"></div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          {[1, 2, 3, 4].map(i => (
+            <div key={i} className="h-48 bg-plum/5 rounded-3xl"></div>
+          ))}
+        </div>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-2 h-80 bg-plum/5 rounded-3xl"></div>
+          <div className="lg:col-span-1 h-80 bg-plum/5 rounded-3xl"></div>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -460,18 +449,25 @@ export function AnalysisPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             {trends.map(trend => (
               <div key={trend.category} className="bg-white/80 backdrop-blur-sm rounded-3xl p-5 border border-sage/20 shadow-sm flex flex-col h-48">
-                <div className="flex items-center justify-between mb-4">
-                  <div className="flex items-center gap-2 text-plum/70 font-medium">
+                <div className="flex items-start justify-between mb-4">
+                  <div className="flex items-center gap-3">
                     <div className="bg-coral/10 p-2 rounded-xl text-coral">{trend.icon}</div>
-                    {trend.label}
+                    <div className="flex flex-col justify-center">
+                      <span className="text-plum/80 font-medium">{trend.label}</span>
+                      {!trend.hasEnoughData && (
+                        <span className="text-[11px] text-plum/40 mt-0.5 leading-none">Not enough data yet</span>
+                      )}
+                    </div>
                   </div>
-                  <span className={`text-xs font-bold px-2 py-1 rounded-lg ${
-                    trend.statusLabel.startsWith('+') ? 'bg-emerald-500/10 text-emerald-600' :
-                    trend.statusLabel.startsWith('-') ? 'bg-rose-500/10 text-rose-600' :
-                    'bg-sage/30 text-plum/60'
-                  }`}>
-                    {trend.statusLabel}
-                  </span>
+                  {trend.hasEnoughData && trend.statusLabel !== 'New Data' && (
+                    <span className={`text-xs font-bold px-2 py-1 rounded-lg mt-0.5 ${
+                      trend.statusLabel.startsWith('+') ? 'bg-emerald-500/10 text-emerald-600' :
+                      trend.statusLabel.startsWith('-') ? 'bg-rose-500/10 text-rose-600' :
+                      'bg-sage/30 text-plum/60'
+                    }`}>
+                      {trend.statusLabel}
+                    </span>
+                  )}
                 </div>
                 
                 <div className="flex-1 w-full mt-auto relative">

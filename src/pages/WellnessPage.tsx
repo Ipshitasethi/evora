@@ -94,8 +94,8 @@ export function WellnessPage() {
   return (
     <div className="max-w-4xl mx-auto px-5 md:px-10 pt-8 pb-20">
       <Fade delay={0} className="mb-8 border-b border-sage/20 pb-4">
-        <Link to="/dashboard" className="inline-flex items-center gap-2 text-xs text-plum/50 hover:text-plum mb-4 transition-colors">
-          <ArrowLeft size={14} /> Back to Dashboard
+        <Link to="/cycle" className="inline-flex items-center gap-2 text-xs text-plum/50 hover:text-plum mb-4 transition-colors">
+          <ArrowLeft size={14} /> Back to Cycle
         </Link>
         <h1 className="font-serif text-3xl md:text-4xl text-plum leading-snug flex items-center gap-3">
           <Sparkles className="text-coral" size={32} />

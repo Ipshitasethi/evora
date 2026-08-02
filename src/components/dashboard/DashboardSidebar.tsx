@@ -2,8 +2,8 @@ import { Link, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
   LayoutDashboard,
-  MessageCircle,
-  BarChart3,
+  MessageSquare,
+  BarChart2,
   BookOpen,
   LogOut,
 } from 'lucide-react';
@@ -12,10 +12,10 @@ import { EvoraLogo } from '../ui/EvoraLogo';
 
 
 const NAV_ITEMS = [
-  { path: '/dashboard', label: 'Cycle', icon: LayoutDashboard },
-  { path: '/chat', label: 'Chat', icon: MessageCircle },
-  { path: '/analysis', label: 'Insights', icon: BarChart3 },
-  { path: '/articles', label: 'Library', icon: BookOpen },
+  { path: '/cycle', label: 'Cycle', icon: LayoutDashboard },
+  { path: '/chat', label: 'Chat', icon: MessageSquare },
+  { path: '/insights', label: 'Insights', icon: BarChart2 },
+  { path: '/library', label: 'Library', icon: BookOpen },
 ];
 
 export function DashboardSidebar() {

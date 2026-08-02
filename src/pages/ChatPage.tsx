@@ -197,6 +197,7 @@ export function ChatPage() {
       // 2. Fetch Chat Sessions
       await fetchSessions();
     })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
   // Fetch all chat sessions for the sidebar

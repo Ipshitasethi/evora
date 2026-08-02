@@ -222,7 +222,7 @@ export function OnboardingPage({ isEmbedded = false, onComplete }: OnboardingPag
     if (onComplete) {
       onComplete();
     } else {
-      navigate('/dashboard');
+      navigate('/cycle');
     }
   };
 

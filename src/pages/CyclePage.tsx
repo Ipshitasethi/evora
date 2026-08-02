@@ -139,7 +139,7 @@ function CircularProgress({ value, max, label, icon: Icon, colorClass, strokeCla
 }
 
 // ─── Main ─────────────────────────────────────────────────────────────────────
-export function DashboardPage() {
+export function CyclePage() {
   const { user } = useAuth();
   const { showToast } = useToast();
   const [profile, setProfile] = useState<Profile | null>(null);

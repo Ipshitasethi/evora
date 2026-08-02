@@ -6,11 +6,11 @@ import { LandingPage } from './pages/LandingPage';
 import { SignUpPage } from './pages/SignUpPage';
 import { LoginPage } from './pages/LoginPage';
 import { OnboardingPage } from './pages/OnboardingPage';
-import { DashboardPage } from './pages/DashboardPage';
+import { CyclePage } from './pages/CyclePage';
 import { AccountPage } from './pages/AccountPage';
 import { ChatPage } from './pages/ChatPage';
-import { AnalysisPage } from './pages/AnalysisPage';
-import { ArticlesPage } from './pages/ArticlesPage';
+import { InsightsPage } from './pages/InsightsPage';
+import { LibraryPage } from './pages/LibraryPage';
 import { ArticleDetailPage } from './pages/ArticleDetailPage';
 import { NotificationsPage } from './pages/NotificationsPage';
 import { WellnessPage } from './pages/WellnessPage';
@@ -30,7 +30,7 @@ function ProtectedRoute({ children }: { children: ReactNode }) {
 function PublicRoute({ children }: { children: ReactNode }) {
   const { session, loading } = useAuth();
   if (loading) return null;
-  if (session) return <Navigate to="/dashboard" replace />;
+  if (session) return <Navigate to="/cycle" replace />;
   return <>{children}</>;
 }
 
@@ -84,12 +84,12 @@ function AppRoutes() {
           </ProtectedRoute>
         }
       >
-        <Route path="/dashboard" element={<DashboardPage />} />
+        <Route path="/cycle" element={<CyclePage />} />
         <Route path="/account" element={<AccountPage />} />
         <Route path="/chat" element={<ChatPage />} />
-        <Route path="/analysis" element={<AnalysisPage />} />
-        <Route path="/articles" element={<ArticlesPage />} />
-        <Route path="/articles/:id" element={<ArticleDetailPage />} />
+        <Route path="/insights" element={<InsightsPage />} />
+        <Route path="/library" element={<LibraryPage />} />
+        <Route path="/library/:id" element={<ArticleDetailPage />} />
         <Route path="/notifications" element={<NotificationsPage />} />
         <Route path="/wellness" element={<WellnessPage />} />
       </Route>
