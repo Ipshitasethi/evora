@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowLeft, ArrowRight, Check, CalendarDays, Info } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient';
 import { useAuth } from '../context/AuthContext';
+import { EvoraLogo } from '../components/ui/EvoraLogo';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface OnboardingData {
@@ -456,10 +457,7 @@ export function OnboardingPage({ isEmbedded = false, onComplete }: OnboardingPag
         {/* Logo (only if not embedded) */}
         {!isEmbedded && (
           <div className="flex items-center gap-2 mb-10">
-            <div className="w-8 h-8 rounded-full border-2 border-coral flex items-center justify-center bg-white shadow-sm">
-              <span className="text-[9px] text-coral font-serif font-bold">E</span>
-            </div>
-            <span className="font-serif text-xl text-plum font-semibold">Evora</span>
+            <EvoraLogo size={32} />
           </div>
         )}
 

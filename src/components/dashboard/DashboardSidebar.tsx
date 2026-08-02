@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { ThemeToggle } from '../ui/ThemeToggle';
+import { EvoraLogo } from '../ui/EvoraLogo';
 
 
 const NAV_ITEMS = [
@@ -29,13 +30,8 @@ export function DashboardSidebar() {
       {/* ── Desktop sidebar ── */}
       <aside className="hidden lg:flex flex-col w-56 min-h-screen bg-white/70 backdrop-blur-md border-r border-sage/20 px-3 py-6 fixed top-0 left-0 z-40">
         {/* Logo */}
-        <Link to="/" className="flex items-center gap-2.5 px-3 mb-10 group">
-          <div className="w-9 h-9 rounded-full border-2 border-coral flex items-center justify-center bg-white shadow-sm">
-            <span className="text-[9px] text-coral font-serif font-bold">E</span>
-          </div>
-          <span className="font-serif text-xl text-plum font-semibold group-hover:text-coral transition-colors">
-            Evora
-          </span>
+        <Link to="/" className="flex items-center px-3 mb-10">
+          <EvoraLogo size={34} />
         </Link>
 
         {/* Nav links */}

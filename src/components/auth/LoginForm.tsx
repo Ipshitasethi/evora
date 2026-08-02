@@ -5,6 +5,7 @@ import { Eye, EyeOff, AlertCircle } from 'lucide-react';
 import { useState } from 'react';
 import { Button } from '../ui/Button';
 import { supabase } from '../../lib/supabaseClient';
+import { EvoraLogo } from '../ui/EvoraLogo';
 
 interface LoginFormData {
   email: string;
@@ -70,11 +71,8 @@ export function LoginForm() {
         className="w-full max-w-md"
       >
         {/* Logo link */}
-        <Link to="/" className="flex items-center gap-2 justify-center mb-8 group">
-          <div className="w-8 h-8 rounded-full border-2 border-coral flex items-center justify-center bg-white shadow-sm">
-            <span className="text-[9px] text-coral font-serif font-bold">E</span>
-          </div>
-          <span className="font-serif text-xl text-plum font-semibold group-hover:text-coral transition-colors">Evora</span>
+        <Link to="/" className="flex items-center justify-center mb-8">
+          <EvoraLogo size={34} />
         </Link>
 
         {/* Card */}

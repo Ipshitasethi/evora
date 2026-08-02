@@ -4,6 +4,7 @@ import { Menu, X } from 'lucide-react';
 import { useState } from 'react';
 import { Button } from '../ui/Button';
 import { useAuth } from '../../context/AuthContext';
+import { EvoraLogo } from '../ui/EvoraLogo';
 
 export function Navbar() {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -14,12 +15,7 @@ export function Navbar() {
     <header className="w-full py-5 px-6 md:px-12 flex items-center justify-between z-50 relative">
       {/* Logo */}
       <Link to="/" className="flex items-center gap-3 group">
-        <div className="w-10 h-10 rounded-full border-2 border-coral flex items-center justify-center bg-white/80 shadow-sm overflow-hidden">
-          <span className="text-[10px] text-coral font-serif font-bold">E</span>
-        </div>
-        <span className="font-serif text-2xl text-plum font-semibold tracking-tight group-hover:text-coral transition-colors duration-200">
-          Evora
-        </span>
+        <EvoraLogo size={38} />
       </Link>
 
       {/* Desktop nav */}
