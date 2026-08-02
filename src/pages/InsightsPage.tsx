@@ -235,7 +235,7 @@ export function InsightsPage() {
       const currentPeriodLogs = catLogs.filter(l => differenceInDays(todayDate, parseISO(l.log_date)) < days);
       const previousPeriodLogs = catLogs.filter(l => differenceInDays(todayDate, parseISO(l.log_date)) >= days && differenceInDays(todayDate, parseISO(l.log_date)) < days * 2);
       
-      const hasEnoughData = currentPeriodLogs.length >= (timeRange === '7d' ? 3 : 5);
+      const hasEnoughData = currentPeriodLogs.length > 0;
       let statusLabel = 'Insufficient data';
       
       if (hasEnoughData) {
@@ -260,7 +260,7 @@ export function InsightsPage() {
         const log = currentPeriodLogs.find(l => l.log_date === dateStr);
         return {
           day: timeRange === '7d' ? format(date, 'EEE') : format(date, 'MMM d'),
-          value: log ? mapValue(cat.id, log.value) : 0
+          value: log ? mapValue(cat.id, log.value) : null
         };
       });
 

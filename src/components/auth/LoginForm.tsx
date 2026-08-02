@@ -1,9 +1,12 @@
 import { useForm } from 'react-hook-form';
 import { motion } from 'framer-motion';
 import { Link, useNavigate } from 'react-router-dom';
-import { Eye, EyeOff, AlertCircle } from 'lucide-react';
+import { Eye, EyeOff, AlertCircle, Copy } from 'lucide-react';
 import { useState } from 'react';
 import { Button } from '../ui/Button';
+
+const DEMO_EMAIL = 'iipshitasethii03@gmail.com';
+const DEMO_PASSWORD = 'ipshitasethi';
 import { supabase } from '../../lib/supabaseClient';
 import { EvoraLogo } from '../ui/EvoraLogo';
 
@@ -176,12 +179,36 @@ export function LoginForm() {
             </Button>
           </form>
 
-          <p className="text-center text-plum/50 text-sm mt-6">
-            New to Evora?{' '}
-            <Link to="/signup" className="text-coral hover:underline font-medium">
-              Create a free account
-            </Link>
-          </p>
+          <div className="mt-8 pt-6 border-t border-sage/30">
+            <div className="bg-sage/10 border border-sage/20 rounded-2xl p-4 mb-4">
+              <h3 className="text-xs font-semibold text-plum uppercase tracking-wider mb-3">Try the Demo</h3>
+              <div className="flex flex-col gap-2">
+                <div className="flex items-center justify-between bg-white/50 rounded-xl px-3 py-2">
+                  <span className="text-sm text-plum/70 font-mono">{DEMO_EMAIL}</span>
+                  <button type="button" onClick={() => navigator.clipboard.writeText(DEMO_EMAIL)} className="text-plum/40 hover:text-coral transition-colors p-1" title="Copy Email">
+                    <Copy size={14} />
+                  </button>
+                </div>
+                <div className="flex items-center justify-between bg-white/50 rounded-xl px-3 py-2">
+                  <span className="text-sm text-plum/70 font-mono">{DEMO_PASSWORD}</span>
+                  <button type="button" onClick={() => navigator.clipboard.writeText(DEMO_PASSWORD)} className="text-plum/40 hover:text-coral transition-colors p-1" title="Copy Password">
+                    <Copy size={14} />
+                  </button>
+                </div>
+              </div>
+            </div>
+            
+            <p className="text-xs text-plum/50 leading-relaxed text-center px-2 mb-6">
+              Want to see it with real data? Log in with the demo account above. (Signing up fresh works too, but analysis needs a few days of logs to appear.)
+            </p>
+
+            <p className="text-center text-plum/50 text-sm">
+              New to Evora?{' '}
+              <Link to="/signup" className="text-coral hover:underline font-medium">
+                Create a free account
+              </Link>
+            </p>
+          </div>
         </div>
       </motion.div>
     </div>

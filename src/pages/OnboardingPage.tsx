@@ -193,21 +193,11 @@ export function OnboardingPage({ isEmbedded = false, onComplete }: OnboardingPag
     if (!user) return;
     setSaving(true);
 
-    // Upsert cycle settings
-    await supabase.from('cycle_settings').upsert({
-      user_id: user.id,
-      last_period_start: data.lastPeriodStart || null,
-      avg_cycle_length: data.avgCycleLength ? parseInt(data.avgCycleLength) : 28,
-      avg_period_length: data.avgPeriodLength ? parseInt(data.avgPeriodLength) : 5,
-      is_estimated: data.isEstimated,
-      goals: data.goals,
-      updated_at: new Date().toISOString(),
-    });
-
     // Recover name from user metadata just in case sign-up upsert failed due to RLS
     const nameToSave = user.user_metadata?.name;
 
-    // Update profile age, name, and onboarding completion
+    // Update profile age, name, and onboarding completion FIRST 
+    // to ensure the foreign key for cycle_settings exists.
     const { error: profileErr } = await supabase.from('profiles').upsert({ 
       id: user.id, 
       onboarding_completed: true, 
@@ -217,6 +207,21 @@ export function OnboardingPage({ isEmbedded = false, onComplete }: OnboardingPag
     
     if (profileErr) {
       console.error("Failed to update profile during onboarding:", profileErr);
+    }
+
+    // Upsert cycle settings SECOND
+    const { error: settingsErr } = await supabase.from('cycle_settings').upsert({
+      user_id: user.id,
+      last_period_start: data.lastPeriodStart || null,
+      avg_cycle_length: data.avgCycleLength ? parseInt(data.avgCycleLength) : 28,
+      avg_period_length: data.avgPeriodLength ? parseInt(data.avgPeriodLength) : 5,
+      is_estimated: data.isEstimated,
+      goals: data.goals,
+      updated_at: new Date().toISOString(),
+    });
+
+    if (settingsErr) {
+      console.error("Failed to update cycle settings during onboarding:", settingsErr);
     }
     
     if (onComplete) {

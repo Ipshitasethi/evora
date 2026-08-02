@@ -217,12 +217,17 @@ export function SignUpForm() {
             )}
           </form>
 
-          <p className="text-center text-plum/50 text-sm mt-6">
-            Already have an account?{' '}
-            <Link to="/login" className="text-coral hover:underline font-medium">
-              Log in
-            </Link>
-          </p>
+          <div className="mt-6 pt-6 border-t border-sage/30 text-center">
+            <p className="text-xs text-plum/50 leading-relaxed mb-4 px-2">
+              New here? Signing up gives you a blank tracker, so Insights and the AI Companion need a few days of logs before they show anything. To see Evora fully working right away, <Link to="/login" className="text-coral hover:underline font-medium">go back to login</Link> and use the demo account instead.
+            </p>
+            <p className="text-plum/50 text-sm">
+              Already have an account?{' '}
+              <Link to="/login" className="text-coral hover:underline font-medium">
+                Log in
+              </Link>
+            </p>
+          </div>
         </div>
 
         <p className="text-center text-plum/35 text-xs mt-6 leading-relaxed">
