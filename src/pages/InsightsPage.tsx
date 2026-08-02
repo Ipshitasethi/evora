@@ -86,6 +86,8 @@ export function InsightsPage() {
 
         const pLogs = pLogsRes.data || [];
         const recentSLogs = recentSLogsRes.data || [];
+        
+        setPeriodLogs(pLogs as any);
 
         // 2. Process data
         const { periods, cycles } = groupPeriodLogsIntoCycles(pLogs as any);
