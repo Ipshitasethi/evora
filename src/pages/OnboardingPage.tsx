@@ -223,6 +223,30 @@ export function OnboardingPage({ isEmbedded = false, onComplete }: OnboardingPag
     if (settingsErr) {
       console.error("Failed to update cycle settings during onboarding:", settingsErr);
     }
+
+    // Insert default period reminder THIRD (only if it doesn't already exist)
+    const { data: existingReminder } = await supabase
+      .from('reminders')
+      .select('id')
+      .eq('user_id', user.id)
+      .eq('type', 'Period')
+      .eq('reminder_kind', 'relative')
+      .eq('days_offset', -3)
+      .maybeSingle();
+
+    if (!existingReminder) {
+      const { error: reminderErr } = await supabase.from('reminders').insert({
+        user_id: user.id,
+        type: 'Period',
+        reminder_kind: 'relative',
+        days_offset: -3,
+        is_enabled: true
+      });
+
+      if (reminderErr) {
+        console.error("Failed to create default reminder during onboarding:", reminderErr);
+      }
+    }
     
     if (onComplete) {
       onComplete();
