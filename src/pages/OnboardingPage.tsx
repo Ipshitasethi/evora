@@ -218,7 +218,7 @@ export function OnboardingPage({ isEmbedded = false, onComplete }: OnboardingPag
       is_estimated: data.isEstimated,
       goals: data.goals,
       updated_at: new Date().toISOString(),
-    });
+    }, { onConflict: 'user_id' });
 
     if (settingsErr) {
       console.error("Failed to update cycle settings during onboarding:", settingsErr);
