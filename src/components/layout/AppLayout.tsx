@@ -1,13 +1,11 @@
 import { useState, useEffect } from 'react';
-import { Outlet, Navigate, useLocation } from 'react-router-dom';
+import { Outlet, Navigate } from 'react-router-dom';
 import { DashboardSidebar } from '../dashboard/DashboardSidebar';
 import { useAuth } from '../../context/AuthContext';
 import { supabase } from '../../lib/supabaseClient';
 
 export function AppLayout() {
   const { session, loading } = useAuth();
-  const location = useLocation();
-  const isChatPage = location.pathname.includes('/chat');
   const [isCheckingOnboarding, setIsCheckingOnboarding] = useState(true);
   const [hasCompletedOnboarding, setHasCompletedOnboarding] = useState<boolean | null>(null);
 

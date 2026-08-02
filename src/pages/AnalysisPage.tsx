@@ -9,8 +9,7 @@ import {
   Tooltip,
   ResponsiveContainer,
   BarChart,
-  Bar,
-  Cell
+  Bar
 } from 'recharts';
 import { Sparkles, CalendarDays, BarChart3, Activity, Zap, Droplets, Smile, Moon } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient';
@@ -31,10 +30,7 @@ interface Cycle {
   month: string;
 }
 
-interface SymptomCount {
-  name: string;
-  count: number;
-}
+
 
 interface TrendData {
   category: string;
@@ -80,7 +76,7 @@ export function AnalysisPage() {
 
   // Chart Data
   const [cycleTrendData, setCycleTrendData] = useState<{ month: string, length: number }[]>([]);
-  const [symptomData, setSymptomData] = useState<SymptomCount[]>([]);
+  // Removed unused symptomData state
   const [trends, setTrends] = useState<TrendData[]>([]);
   const [patterns, setPatterns] = useState<Pattern[]>([]);
   const [periodLogs, setPeriodLogs] = useState<{log_date: string, flow_intensity?: string}[]>([]);
@@ -160,7 +156,7 @@ export function AnalysisPage() {
           .map(([name, count]) => ({ name, count }))
           .sort((a, b) => b.count - a.count)
           .slice(0, 5);
-        setSymptomData(topSymptoms);
+        // setSymptomData(topSymptoms);
 
         // 2b. Compute 14-day Trend Data
         const fourteenDaysAgo = format(subDays(new Date(), 14), 'yyyy-MM-dd');
@@ -178,11 +174,15 @@ export function AnalysisPage() {
 
         const allRecentLogs: { log_date: string; category: string; value: string }[] = [];
         if (recentSLogs) {
-          recentSLogs.forEach(l => allRecentLogs.push({ log_date: l.log_date, category: l.symptom, value: l.value }));
+          recentSLogs.forEach(l => {
+            if (l.log_date && l.symptom && l.value) {
+              allRecentLogs.push({ log_date: l.log_date, category: l.symptom, value: l.value });
+            }
+          });
         }
         if (recentPLogs) {
           recentPLogs.forEach(l => {
-            if (l.flow_intensity) {
+            if (l.log_date && l.flow_intensity) {
               allRecentLogs.push({ log_date: l.log_date, category: 'flow', value: l.flow_intensity });
             }
           });
@@ -336,11 +336,6 @@ export function AnalysisPage() {
         setLoading(false);
       }
     }
-
-    const reloadData = () => {
-      setLoading(true);
-      loadData();
-    };
 
     loadData();
   }, [user]);

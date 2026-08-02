@@ -235,7 +235,7 @@ export function ChatPage() {
         .limit(100);
       
       if (history && history.length > 0) {
-        setMessages(history.map(h => ({ id: h.id, role: h.role as 'user' | 'assistant', content: h.content || '', image: h.image || undefined })));
+        setMessages(history.map((h: any) => ({ id: h.id, role: h.role as 'user' | 'assistant', content: h.content || '', image: h.image || undefined })));
       } else {
         setMessages([]);
       }
@@ -328,7 +328,7 @@ export function ChatPage() {
       role: 'user',
       content: userMsg.content,
       image: userMsg.image,
-    });
+    } as any);
 
     let reply = '';
     const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
