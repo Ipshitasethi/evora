@@ -71,7 +71,7 @@ export function ExportSummaryPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-white flex items-center justify-center font-sans text-slate-800">
+      <div className="min-h-screen bg-[#ffffff] flex items-center justify-center font-sans text-slate-800">
         <p className="text-slate-500 animate-pulse">Generating clinical report...</p>
       </div>
     );
@@ -199,7 +199,7 @@ export function ExportSummaryPage() {
   doctorNote += `A full breakdown of dynamically tracked wellness metrics and symptoms is provided below.`;
 
   return (
-    <div className="min-h-screen bg-slate-50 font-sans text-slate-800 pb-20 print:bg-white print:pb-0">
+    <div className="min-h-screen bg-slate-50 font-sans text-slate-800 pb-20 print:bg-[#ffffff] print:pb-0">
       
       {/* --- Print Controls --- */}
       <div className="print:hidden max-w-4xl mx-auto px-8 pt-8 pb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -209,14 +209,14 @@ export function ExportSummaryPage() {
         </Link>
         <button 
           onClick={() => window.print()}
-          className="flex items-center gap-2 bg-slate-900 text-white px-5 py-2.5 rounded-lg font-medium hover:bg-slate-800 transition-colors shadow-sm"
+          className="flex items-center gap-2 bg-slate-900 text-[#ffffff] px-5 py-2.5 rounded-lg font-medium hover:bg-slate-800 transition-colors shadow-sm"
         >
           <Printer size={18} />
           <span>Save as PDF / Print</span>
         </button>
       </div>
 
-      <div className="max-w-4xl mx-auto bg-white print:shadow-none shadow-sm rounded-xl print:rounded-none overflow-hidden">
+      <div className="max-w-4xl mx-auto bg-[#ffffff] print:shadow-none shadow-sm rounded-xl print:rounded-none overflow-hidden">
         
         {/* --- SECTION 1: COVER & EXECUTIVE SUMMARY --- */}
         <div className="p-10 sm:p-14 print:p-8 border-b border-slate-200">

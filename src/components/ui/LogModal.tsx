@@ -20,6 +20,7 @@ const CATEGORIES = [
   { id: 'pms', label: 'PMS', icon: Activity, color: 'text-purple-500', bg: 'bg-purple-500/10' },
   { id: 'sleep', label: 'Sleep', icon: Moon, color: 'text-indigo-500', bg: 'bg-indigo-500/10' },
   { id: 'hydration', label: 'Hydration', icon: GlassWater, color: 'text-cyan-500', bg: 'bg-cyan-500/10' },
+  { id: 'activity', label: 'Activity', icon: Activity, color: 'text-sage-600', bg: 'bg-sage-600/10' },
   { id: 'energy', label: 'Energy', icon: Zap, color: 'text-emerald-500', bg: 'bg-emerald-500/10' },
 ];
 
@@ -29,6 +30,7 @@ const OPTIONS: Record<string, string[]> = {
   cramps: ['None', 'Mild', 'Moderate', 'Severe'],
   pms: ['None', 'Mild', 'Moderate', 'Severe'],
   energy: ['High', 'Normal', 'Low'],
+  activity: ['Rest', 'Light', 'Moderate', 'Intense'],
 };
 
 export function LogModal({ isOpen, onClose, initialCategory }: LogModalProps) {

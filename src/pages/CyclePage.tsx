@@ -156,6 +156,7 @@ export function CyclePage() {
   const [dailyTips, setDailyTips] = useState<any[]>([]);
   const [allTips, setAllTips] = useState<any[]>([]);
   const [isWellnessModalOpen, setIsWellnessModalOpen] = useState(false);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   useEffect(() => {
     if (!user) return;
@@ -176,7 +177,7 @@ export function CyclePage() {
       }
       setLoading(false);
     })();
-  }, [user]);
+  }, [user, refreshTrigger]);
 
   // Derived
   const firstName = profile?.name?.split(' ')[0] ?? 'there';
@@ -248,18 +249,33 @@ export function CyclePage() {
   };
 
   // Determine personalized message based on snapshot
+  const getActivityValue = (val: string | null) => {
+    if (!val) return 0;
+    const v = val.toLowerCase();
+    if (v === 'rest') return 0.25;
+    if (v === 'light') return 0.5;
+    if (v === 'moderate') return 0.75;
+    if (v === 'intense') return 1;
+    return 1;
+  };
+
   let snapshotMessage = "Log your daily wellness to see personalized insights.";
-  if (todaySleep !== null) {
-    const hours = parseFloat(todaySleep);
-    if (hours >= 7) snapshotMessage = "Great sleep last night — keep it up.";
-    else if (hours < 6) snapshotMessage = "You're a bit under your usual sleep — try winding down earlier tonight.";
-    else snapshotMessage = "You got a moderate amount of sleep last night.";
+  if (todaySleep === null) {
+    snapshotMessage = "How did you sleep last night? Log your sleep to see insights.";
   } else if (todayHydration === null) {
     snapshotMessage = "Don't forget to log your water intake today.";
   } else if (todayActivity === null) {
-    snapshotMessage = "Take a moment to stretch or move today.";
+    snapshotMessage = "Take a moment to stretch or move today. Log your activity!";
   } else {
-    snapshotMessage = "Great job keeping up with your wellness tracking today!";
+    const hours = parseFloat(todaySleep);
+    const water = parseFloat(todayHydration);
+    if (hours < 6) {
+      snapshotMessage = "You're a bit under your usual sleep — try winding down earlier tonight.";
+    } else if (water < 4) {
+      snapshotMessage = "You're a bit behind on your hydration goals today.";
+    } else {
+      snapshotMessage = "Great job keeping up with your wellness tracking today!";
+    }
   }
 
   return (
@@ -377,10 +393,10 @@ export function CyclePage() {
                 {/* Stats column — takes 2 cols */}
                 <div className="lg:col-span-2 flex flex-col gap-4">
 
-                  {/* ── Wellness Snapshot ── */}
+                  {/* ── Today's Wellness ── */}
                   <Fade delay={0.25}>
                     <div className="bg-white/80 backdrop-blur-sm rounded-3xl border border-sage/20 shadow-sm p-5 flex flex-col">
-                      <h3 className="font-serif text-plum font-semibold mb-4 text-[15px]">Wellness Snapshot</h3>
+                      <h3 className="font-serif text-plum font-semibold mb-4 text-[15px]">Today's Wellness</h3>
                       
                       <div className="flex items-center justify-around mb-5">
                         <CircularProgress 
@@ -400,7 +416,7 @@ export function CyclePage() {
                           strokeClass="text-cyan-400" 
                         />
                         <CircularProgress 
-                          value={todayActivity ? 1 : 0} 
+                          value={getActivityValue(todayActivity)} 
                           max={1} 
                           label="Activity" 
                           icon={ActivityIcon} 
@@ -431,7 +447,7 @@ export function CyclePage() {
                           </p>
                         </div>
                       </div>
-                      <Link to="/analysis" className="text-[11px] text-plum/40 hover:text-coral flex items-center gap-1 font-medium mt-1 w-fit transition-colors">
+                      <Link to="/insights" className="text-[11px] text-plum/40 hover:text-coral flex items-center gap-1 font-medium mt-1 w-fit transition-colors">
                         View trends <ArrowRight size={10} />
                       </Link>
                     </div>
@@ -457,7 +473,7 @@ export function CyclePage() {
                           style={{ width: `${dayInCycle && cycleLen ? Math.min(100, (dayInCycle / cycleLen) * 100) : 0}%` }} 
                         />
                       </div>
-                      <Link to="/analysis" className="text-[11px] text-plum/40 hover:text-coral flex items-center gap-1 font-medium mt-1 w-fit transition-colors">
+                      <Link to="/insights" className="text-[11px] text-plum/40 hover:text-coral flex items-center gap-1 font-medium mt-1 w-fit transition-colors">
                         View trends <ArrowRight size={10} />
                       </Link>
                     </div>
@@ -532,6 +548,7 @@ export function CyclePage() {
         onClose={() => {
           setIsLogModalOpen(false);
           setLogModalCategory(undefined);
+          setRefreshTrigger(prev => prev + 1);
         }}
         initialCategory={logModalCategory}
       />
