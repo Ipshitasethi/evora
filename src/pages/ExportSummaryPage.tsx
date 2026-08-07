@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import { useAuth } from '../context/AuthContext';
-import { format, subDays, parseISO, differenceInDays, addDays, isSameDay } from 'date-fns';
+import { format, subDays, addDays, isSameDay } from 'date-fns';
 import { groupPeriodLogsIntoCycles } from '../lib/cycleUtils';
 import { Printer, ArrowLeft, Info, AlertCircle, FileText, CheckCircle2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
