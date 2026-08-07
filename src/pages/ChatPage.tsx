@@ -4,7 +4,6 @@ import { Send, Sparkles, Plus, MessageSquare, Menu, X, Trash2, Mic, Image as Ima
 import { supabase } from '../lib/supabaseClient';
 import { useAuth } from '../context/AuthContext';
 import { differenceInDays, parseISO } from 'date-fns';
-import { GoogleGenAI } from '@google/genai';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface Message {
@@ -332,54 +331,57 @@ export function ChatPage() {
     } as any);
 
     let reply = '';
-    const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
     
-    if (apiKey) {
-      try {
-        const genAI = new GoogleGenAI({ apiKey });
-        
-        const systemPrompt = `You are ${companionName}, a warm, supportive menstrual health companion. You are speaking to a user named ${userName}. You offer gentle guidance, not diagnosis, and personalize responses using the user's actual tracked data. You must keep responses relatively concise, warm, and conversational.
+    try {
+      const systemPrompt = `You are ${companionName}, a warm, supportive menstrual health companion. You are speaking to a user named ${userName}. You offer gentle guidance, not diagnosis, and personalize responses using the user's actual tracked data. You must keep responses relatively concise, warm, and conversational.
 User Context: 
 - Current Phase: ${userCtx.phase || 'Unknown'}
 - Cycle Day: ${userCtx.dayOfCycle || 'Unknown'}
 - Cycle Length: ${userCtx.cycleLength || 'Unknown'}
 - Recent Symptoms: ${userCtx.recentSymptoms.length ? userCtx.recentSymptoms.join(', ') : 'None logged'}`;
 
-        const historyContext = messages
-          .slice(-8)
-          .map(m => `${m.role === 'user' ? 'User' : companionName}: ${m.content}`)
-          .join('\n\n');
-        
-        const prompt = `${systemPrompt}\n\nChat History:\n${historyContext}\n\nUser: ${text.trim()}\n${companionName}:`;
-        
-        const parts: any[] = [{ text: prompt }];
-        if (currentImg) {
-          parts.push({
-            inlineData: {
-              data: currentImg.split(',')[1],
-              mimeType: currentImg.match(/data:(.*?);base64/)?.[1] || 'image/jpeg'
-            }
-          });
-        }
-        
-        const responseStream = await genAI.models.generateContentStream({
-          model: 'gemini-3.6-flash',
-          contents: parts,
-        });
+      const historyContext = messages
+        .slice(-8)
+        .map(m => `${m.role === 'user' ? 'User' : companionName}: ${m.content}`)
+        .join('\n\n');
+      
+      const prompt = `${systemPrompt}\n\nChat History:\n${historyContext}\n\nUser: ${text.trim()}\n${companionName}:`;
+      
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData.session?.access_token;
+      
+      if (!token) throw new Error("No active session");
 
-        setIsTyping(false);
-        const assistantMsg: Message = { id: crypto.randomUUID(), role: 'assistant', content: '' };
-        setMessages((m) => [...m, assistantMsg]);
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chat`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ prompt, image: currentImg })
+      });
 
-        for await (const chunk of responseStream) {
-          reply += chunk.text;
+      if (!response.ok) {
+        throw new Error(`Edge function error: ${response.status}`);
+      }
+
+      setIsTyping(false);
+      const assistantMsg: Message = { id: crypto.randomUUID(), role: 'assistant', content: '' };
+      setMessages((m) => [...m, assistantMsg]);
+
+      const reader = response.body?.getReader();
+      if (reader) {
+        const decoder = new TextDecoder();
+        while (true) {
+          const { value, done } = await reader.read();
+          if (done) break;
+          const chunk = decoder.decode(value, { stream: true });
+          reply += chunk;
           setMessages((m) => m.map(msg => msg.id === assistantMsg.id ? { ...msg, content: reply } : msg));
         }
-      } catch (err) {
-        console.error('Gemini API error:', err);
-        reply = await getMockResponse(text.trim());
       }
-    } else {
+    } catch (err) {
+      console.error('Chat API error:', err);
       reply = await getMockResponse(text.trim());
     }
 
