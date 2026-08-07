@@ -11,7 +11,8 @@ import {
   BarChart,
   Bar
 } from 'recharts';
-import { Sparkles, CalendarDays, BarChart3, Activity, Zap, Droplets, Smile, Moon, GlassWater } from 'lucide-react';
+import { Sparkles, CalendarDays, BarChart3, Activity, Zap, Droplets, Smile, Moon, GlassWater, FileText } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { supabase } from '../lib/supabaseClient';
 import { useAuth } from '../context/AuthContext';
 import { differenceInDays, parseISO, format, subDays, startOfDay } from 'date-fns';
@@ -300,12 +301,22 @@ export function InsightsPage() {
     <div className="max-w-5xl mx-auto px-5 md:px-10 pt-8 pb-20">
 
       {/* ── Header ── */}
-      <Fade delay={0} className="mb-8 border-b border-sage/20 pb-4">
-        <h1 className="font-serif text-3xl md:text-4xl text-plum leading-snug flex items-center gap-3">
-          <BarChart3 className="text-coral" size={32} />
-          Insights
-        </h1>
-        <p className="text-plum/50 text-sm mt-2">Insights and trends based on your logged data.</p>
+      <Fade delay={0} className="mb-8 border-b border-sage/20 pb-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <h1 className="font-serif text-3xl md:text-4xl text-plum leading-snug flex items-center gap-3">
+            <BarChart3 className="text-coral" size={32} />
+            Insights
+          </h1>
+          <p className="text-plum/50 text-sm mt-2">Insights and trends based on your logged data.</p>
+        </div>
+        <Link 
+          to="/export"
+          target="_blank"
+          className="flex items-center gap-2 bg-coral text-white px-4 py-2 rounded-full font-medium text-sm hover:bg-coral/90 transition-colors shrink-0 self-start md:self-auto"
+        >
+          <FileText size={16} />
+          <span>Share with doctor</span>
+        </Link>
       </Fade>
 
       <div className="flex flex-col lg:flex-row gap-6 mb-8">

@@ -14,6 +14,7 @@ import { LibraryPage } from './pages/LibraryPage';
 import { ArticleDetailPage } from './pages/ArticleDetailPage';
 import { NotificationsPage } from './pages/NotificationsPage';
 import { WellnessPage } from './pages/WellnessPage';
+import { ExportSummaryPage } from './pages/ExportSummaryPage';
 import { AppLayout } from './components/layout/AppLayout';
 import { PublicLayout } from './components/layout/PublicLayout';
 import type { ReactNode } from 'react';
@@ -72,6 +73,17 @@ function AppRoutes() {
         element={
           <ProtectedRoute>
             <OnboardingPage />
+          </ProtectedRoute>
+        }
+      />
+
+
+      {/* Protected Export Summary (No sidebar, print view) */}
+      <Route
+        path="/export"
+        element={
+          <ProtectedRoute>
+            <ExportSummaryPage />
           </ProtectedRoute>
         }
       />

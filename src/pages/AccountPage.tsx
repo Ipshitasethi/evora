@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import { User, Mail, LogOut, Save, Plus, Bell, Activity, X, CalendarDays } from 'lucide-react';
+import { User, Mail, LogOut, Save, Plus, Bell, Activity, X, CalendarDays, FileText } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 import { DangerZone } from '../components/ui/DangerZone';
 import { useAuth } from '../context/AuthContext';
@@ -651,6 +652,28 @@ function AppearanceSection() {
   );
 }
 
+// ─── Export Data ─────────────────────────────────────────────────────────────
+function ExportDataSection() {
+  return (
+    <FadeCard delay={0.14} className="bg-white/80 backdrop-blur-sm rounded-3xl border border-sage/20 shadow-sm p-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h2 className="font-serif text-lg text-plum">Export Data</h2>
+          <p className="text-sm text-plum/45">Generate a clean summary of your cycle data</p>
+        </div>
+        <Link 
+          to="/export"
+          target="_blank"
+          className="flex items-center gap-2 bg-coral text-white px-4 py-2 rounded-full font-medium text-sm hover:bg-coral/90 transition-colors shrink-0"
+        >
+          <FileText size={16} />
+          <span>Share with doctor</span>
+        </Link>
+      </div>
+    </FadeCard>
+  );
+}
+
 // ─── Main Page ───────────────────────────────────────────────────────────────
 export function AccountPage() {
   return (
@@ -666,6 +689,7 @@ export function AccountPage() {
         <BmiCalculator />
         <RemindersSection />
         <AppearanceSection />
+        <ExportDataSection />
         
         <FadeCard delay={0.15}>
           <DangerZone />
