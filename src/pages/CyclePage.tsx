@@ -154,14 +154,19 @@ export function CyclePage() {
   const [isWellnessModalOpen, setIsWellnessModalOpen] = useState(false);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
 
+  // Anomaly Detection State
+  const [longFlowEndDate, setLongFlowEndDate] = useState<string | null>(null);
+  const [isLongFlowDismissed, setIsLongFlowDismissed] = useState(false);
+
   useEffect(() => {
     if (!user) return;
     (async () => {
       const today = format(new Date(), 'yyyy-MM-dd');
-      const [{ data: p }, { data: c }, { data: logs }] = await Promise.all([
+      const [{ data: p }, { data: c }, { data: logs }, { data: pLogs }] = await Promise.all([
         supabase.from('profiles').select('name, onboarding_completed').eq('id', user.id).maybeSingle(),
         supabase.from('cycle_settings').select('*').eq('user_id', user.id).maybeSingle(),
         supabase.from('symptom_logs').select('symptom, value').eq('user_id', user.id).eq('log_date', today),
+        supabase.from('period_logs').select('log_date, flow_intensity').eq('user_id', user.id).order('log_date', { ascending: true })
       ]);
       setProfile(p);
       setCycle(c);
@@ -171,6 +176,41 @@ export function CyclePage() {
         setTodayHydration(logs.find(l => l.symptom === 'hydration')?.value || null);
         setTodayActivity(logs.find(l => l.symptom === 'activity')?.value || null);
       }
+      
+      if (pLogs && pLogs.length > 0) {
+        let currentStreak = 0;
+        let lastDate: Date | null = null;
+        let streakEndStr = '';
+        let foundLongStreak = false;
+
+        for (const log of pLogs) {
+          if (log.flow_intensity && log.flow_intensity !== 'none' && log.log_date) {
+            const d = parseISO(log.log_date);
+            if (lastDate && differenceInCalendarDays(d, lastDate) === 1) {
+              currentStreak++;
+            } else if (lastDate && differenceInCalendarDays(d, lastDate) > 1) {
+              currentStreak = 1;
+            } else if (!lastDate) {
+              currentStreak = 1;
+            }
+            lastDate = d;
+            if (currentStreak > 10) {
+              foundLongStreak = true;
+              streakEndStr = log.log_date;
+            }
+          } else {
+            currentStreak = 0;
+            lastDate = null;
+          }
+        }
+        
+        if (foundLongStreak) {
+          setLongFlowEndDate(streakEndStr);
+          const dismissed = localStorage.getItem(`dismissed_long_flow_${streakEndStr}`) === 'true';
+          setIsLongFlowDismissed(dismissed);
+        }
+      }
+
       setLoading(false);
     })();
   }, [user, refreshTrigger]);
@@ -206,6 +246,13 @@ export function CyclePage() {
     setLogModalCategory('flow');
     setIsLogModalOpen(true);
     handleDismissPrompt();
+  };
+
+  const handleDismissLongFlow = () => {
+    if (longFlowEndDate) {
+      localStorage.setItem(`dismissed_long_flow_${longFlowEndDate}`, 'true');
+      setIsLongFlowDismissed(true);
+    }
   };
 
   // Fetch daily tips when phase changes
@@ -319,6 +366,33 @@ export function CyclePage() {
                         className="px-4 py-2 rounded-xl text-sm font-medium bg-coral text-white hover:bg-coral-dark transition-colors shadow-sm"
                       >
                         Yes, it started
+                      </button>
+                    </div>
+                  </div>
+                </Fade>
+              )}
+
+              {/* ── Long Flow Banner ── */}
+              {longFlowEndDate && !isLongFlowDismissed && (
+                <Fade delay={0.15} className="mb-6">
+                  <div className="bg-amber-500/10 border border-amber-500/30 rounded-3xl p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div className="flex items-center gap-4">
+                      <div className="w-10 h-10 bg-amber-500/20 rounded-full flex items-center justify-center text-amber-600 flex-shrink-0">
+                        <ActivityIcon size={20} />
+                      </div>
+                      <div>
+                        <h3 className="text-plum font-serif text-[17px] font-medium">
+                          Long continuous flow detected
+                        </h3>
+                        <p className="text-sm text-plum/70 mt-0.5">You've logged flow for over 10 days in a row — that's longer than typical. If this continues, it may be worth mentioning to a doctor.</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3 self-end sm:self-auto">
+                      <button 
+                        onClick={handleDismissLongFlow}
+                        className="px-4 py-2 rounded-xl text-sm font-medium text-plum/70 hover:bg-black/5 transition-colors whitespace-nowrap"
+                      >
+                        Dismiss
                       </button>
                     </div>
                   </div>

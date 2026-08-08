@@ -1,11 +1,11 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { format, subDays, isSameDay } from 'date-fns';
+import { format, subDays, isSameDay, parseISO, startOfDay, differenceInCalendarDays, addDays } from 'date-fns';
 import { X, Droplets, Smile, Zap, Moon, Activity, Check, GlassWater } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from './Toast';
-import { updateCycleAverages } from '../../lib/cycleUtils';
+import { updateCycleAverages, getCyclePhase } from '../../lib/cycleUtils';
 
 interface LogModalProps {
   isOpen: boolean;
@@ -46,6 +46,8 @@ export function LogModal({ isOpen, onClose, initialCategory }: LogModalProps) {
   // Map of category → saved value for the selected date
   const [savedLogs, setSavedLogs] = useState<Record<string, string>>({});
   const [loadingLogs, setLoadingLogs] = useState(false);
+  const [cycleSettings, setCycleSettings] = useState<any>(null);
+  const [pendingSave, setPendingSave] = useState<{ category: string, value: string, closeOnSave: boolean } | null>(null);
 
   useEffect(() => {
     if (isOpen && initialCategory) {
@@ -54,6 +56,7 @@ export function LogModal({ isOpen, onClose, initialCategory }: LogModalProps) {
       setActiveCategory(null);
       setSelectedDate(new Date());
       setSavedLogs({});
+      setPendingSave(null);
     }
   }, [isOpen, initialCategory]);
 
@@ -62,7 +65,7 @@ export function LogModal({ isOpen, onClose, initialCategory }: LogModalProps) {
     if (activeCategory === 'hydration') setHydrationCount(savedLogs['hydration'] || '0');
   }, [activeCategory, savedLogs]);
 
-  // Fetch hidden categories on open
+  // Fetch hidden categories and cycle settings on open
   useEffect(() => {
     if (user && isOpen) {
       supabase.from('profiles').select('hidden_categories').eq('id', user.id).single()
@@ -70,6 +73,10 @@ export function LogModal({ isOpen, onClose, initialCategory }: LogModalProps) {
           if (data?.hidden_categories) {
             setHiddenCategories(data.hidden_categories);
           }
+        });
+      supabase.from('cycle_settings').select('*').eq('user_id', user.id).maybeSingle()
+        .then(({ data }) => {
+          if (data) setCycleSettings(data);
         });
     }
   }, [user, isOpen]);
@@ -123,9 +130,32 @@ export function LogModal({ isOpen, onClose, initialCategory }: LogModalProps) {
   // Generate last 7 days
   const dates = Array.from({ length: 7 }).map((_, i) => subDays(new Date(), i)).reverse();
 
-  const handleSave = async (category: string, value: string, closeOnSave: boolean = true) => {
+  const handleSave = async (category: string, value: string, closeOnSave: boolean = true, skipPhaseCheck: boolean = false) => {
     if (!user) return;
     
+    // Phase anomaly check
+    if (!skipPhaseCheck && (category === 'flow' || category === 'cramps') && value.toLowerCase() !== 'none') {
+      if (cycleSettings && cycleSettings.last_period_start) {
+        const cycleLen = cycleSettings.avg_cycle_length || 28;
+        const periodLen = cycleSettings.avg_period_length || 5;
+        
+        let baseDate = startOfDay(parseISO(cycleSettings.last_period_start));
+        const targetDate = startOfDay(selectedDate);
+        
+        while (differenceInCalendarDays(targetDate, baseDate) >= cycleLen) {
+          baseDate = addDays(baseDate, cycleLen);
+        }
+        
+        const dayInCycle = differenceInCalendarDays(targetDate, baseDate) + 1;
+        const computedPhase = getCyclePhase(dayInCycle, cycleLen, periodLen);
+        
+        if (computedPhase !== 'Menstrual') {
+          setPendingSave({ category, value, closeOnSave });
+          return;
+        }
+      }
+    }
+
     const dateStr = format(selectedDate, 'yyyy-MM-dd');
     
     try {
@@ -208,6 +238,7 @@ export function LogModal({ isOpen, onClose, initialCategory }: LogModalProps) {
               <h2 className="font-serif text-2xl text-plum">{showSettings ? 'Customize' : activeCategory ? 'Log Details' : 'Quick Log'}</h2>
               <button onClick={() => {
                 if (showSettings) setShowSettings(false);
+                else if (pendingSave) setPendingSave(null);
                 else if (activeCategory) setActiveCategory(null);
                 else onClose();
               }} className="p-2 rounded-full hover:bg-sage/20 text-plum/50 transition-colors">
@@ -295,7 +326,30 @@ export function LogModal({ isOpen, onClose, initialCategory }: LogModalProps) {
                     )}
                   </p>
                   
-                  {activeCategory === 'sleep' ? (
+                  {pendingSave ? (
+                    <div className="flex flex-col gap-4">
+                      <div className="bg-amber-500/10 border border-amber-500/30 rounded-2xl p-5">
+                        <p className="text-sm font-medium text-amber-700 leading-relaxed text-center">
+                          Based on your cycle settings, you're not expected to be in your period right now — are you sure you want to log this?
+                        </p>
+                      </div>
+                      <button 
+                        onClick={() => {
+                          handleSave(pendingSave.category, pendingSave.value, pendingSave.closeOnSave, true);
+                          setPendingSave(null);
+                        }}
+                        className="w-full py-4 bg-coral text-white rounded-2xl font-medium shadow-sm transition-transform active:scale-95"
+                      >
+                        Yes, log it
+                      </button>
+                      <button 
+                        onClick={() => setPendingSave(null)}
+                        className="w-full py-4 bg-cream text-plum/70 rounded-2xl font-medium hover:bg-sage/20 transition-colors"
+                      >
+                        Actually, never mind
+                      </button>
+                    </div>
+                  ) : activeCategory === 'sleep' ? (
                     <div className="space-y-6">
                       <div className="flex flex-col items-center gap-6 py-4">
                         <label className="text-sm font-medium text-plum/70">Hours slept</label>

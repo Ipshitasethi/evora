@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Send, Sparkles, Plus, MessageSquare, Menu, X, Trash2, Mic, Image as ImageIcon, Edit2, Check } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient';
 import { useAuth } from '../context/AuthContext';
-import { differenceInDays, parseISO } from 'date-fns';
+import { differenceInDays, parseISO, format, subDays } from 'date-fns';
 import { getCyclePhase } from '../lib/cycleUtils';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -24,7 +24,8 @@ export interface UserContext {
   phase: string | null;
   dayOfCycle: number | null;
   cycleLength: number | null;
-  recentSymptoms: string[];
+  goals: string[];
+  recentLogsSummary: string;
 }
 
 // ─── Phase calc ───────────────────────────────────────────────────────────────
@@ -139,23 +140,27 @@ export function ChatPage() {
     phase: null,
     dayOfCycle: null,
     cycleLength: null,
-    recentSymptoms: [],
+    goals: [],
+    recentLogsSummary: '',
   });
 
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const loadedSessionId = useRef<string | null>(null);
 
   // Initial Load: Context & Sessions
   useEffect(() => {
     if (!user) return;
     (async () => {
-      // 1. Fetch User Context
-      const { data: c } = await supabase
-        .from('cycle_settings')
-        .select('last_period_start, avg_cycle_length, avg_period_length')
-        .eq('user_id', user.id)
-        .maybeSingle();
+      const fourteenDaysAgo = format(subDays(new Date(), 14), 'yyyy-MM-dd');
 
+      const [cRes, sRes, pRes] = await Promise.all([
+        supabase.from('cycle_settings').select('last_period_start, avg_cycle_length, avg_period_length, goals').eq('user_id', user.id).maybeSingle(),
+        supabase.from('symptom_logs').select('log_date, symptom, value').eq('user_id', user.id).gte('log_date', fourteenDaysAgo).order('log_date', { ascending: false }),
+        supabase.from('period_logs').select('log_date, flow_intensity').eq('user_id', user.id).gte('log_date', fourteenDaysAgo).order('log_date', { ascending: false })
+      ]);
+
+      const c = cRes.data;
       if (c?.last_period_start && c?.avg_cycle_length) {
         const day = ((differenceInDays(new Date(), parseISO(c.last_period_start)) % c.avg_cycle_length) + 1);
         const phase = getPhase(day, c.avg_period_length ?? 5, c.avg_cycle_length);
@@ -164,22 +169,42 @@ export function ChatPage() {
           phase,
           dayOfCycle: day,
           cycleLength: c.avg_cycle_length,
+          goals: c.goals || []
         }));
       }
 
-      const { data: symptoms } = await supabase
-        .from('symptom_logs')
-        .select('symptom')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false })
-        .limit(5);
+      // Format Logs
+      const dailyLogs: Record<string, string[]> = {};
+      
+      const sLogs = sRes.data || [];
+      sLogs.forEach(log => {
+        if (!log.log_date || !log.symptom) return;
+        if (!dailyLogs[log.log_date]) dailyLogs[log.log_date] = [];
+        dailyLogs[log.log_date].push(`${log.symptom.charAt(0).toUpperCase() + log.symptom.slice(1)}: ${log.value || 'logged'}`);
+      });
 
-      if (symptoms && symptoms.length > 0) {
-        setUserCtx((prev) => ({
-          ...prev,
-          recentSymptoms: [...new Set(symptoms.map((s) => s.symptom).filter(Boolean) as string[])],
-        }));
-      }
+      const pLogs = pRes.data || [];
+      pLogs.forEach(log => {
+        if (!log.log_date || !log.flow_intensity || log.flow_intensity === 'none') return;
+        if (!dailyLogs[log.log_date]) dailyLogs[log.log_date] = [];
+        dailyLogs[log.log_date].push(`Flow: ${log.flow_intensity}`);
+      });
+
+      // Construct summary string
+      const dates = Object.keys(dailyLogs).sort();
+      const summaryLines = dates.map(date => {
+        const formattedDate = format(parseISO(date), 'MMM d');
+        return `${formattedDate} - ${dailyLogs[date].join(', ')}`;
+      });
+      
+      const recentLogsSummary = summaryLines.length > 0 
+        ? summaryLines.join('. ') 
+        : 'No data logged in the last 14 days.';
+
+      setUserCtx((prev) => ({
+        ...prev,
+        recentLogsSummary
+      }));
 
       const { data: p } = await supabase
         .from('profiles')
@@ -196,7 +221,7 @@ export function ChatPage() {
   }, [user]);
 
   // Fetch all chat sessions for the sidebar
-  const fetchSessions = async () => {
+  const fetchSessions = async (autoSelect = true) => {
     if (!user) return;
     const { data: sessionData } = await supabase
       .from('chat_sessions')
@@ -207,7 +232,7 @@ export function ChatPage() {
     if (sessionData) {
       setSessions(sessionData);
       // Auto-select the most recent session if none is selected
-      if (sessionData.length > 0 && !activeSessionId) {
+      if (autoSelect && sessionData.length > 0 && !activeSessionId) {
         setActiveSessionId(sessionData[0].id);
       }
     }
@@ -218,8 +243,11 @@ export function ChatPage() {
     if (!user) return;
     if (!activeSessionId) {
       setMessages([]);
+      loadedSessionId.current = null;
       return;
     }
+
+    if (loadedSessionId.current === activeSessionId) return;
 
     (async () => {
       const { data: history } = await supabase
@@ -230,6 +258,7 @@ export function ChatPage() {
         .order('created_at', { ascending: true })
         .limit(100);
       
+      loadedSessionId.current = activeSessionId;
       if (history && history.length > 0) {
         setMessages(history.map((h: any) => ({ id: h.id, role: h.role as 'user' | 'assistant', content: h.content || '', image: h.image || undefined })));
       } else {
@@ -245,6 +274,7 @@ export function ChatPage() {
 
   const handleNewChat = () => {
     setActiveSessionId(null);
+    loadedSessionId.current = null;
     setMessages([]);
     setSidebarOpen(false);
   };
@@ -256,6 +286,7 @@ export function ChatPage() {
     setSessions(s => s.filter(x => x.id !== id));
     if (activeSessionId === id) {
       setActiveSessionId(null);
+      loadedSessionId.current = null;
       setMessages([]);
     }
   };
@@ -298,10 +329,11 @@ export function ChatPage() {
         return;
       }
       currentSessionId = newSession.id;
+      loadedSessionId.current = currentSessionId;
       setActiveSessionId(currentSessionId);
       isNewSession = true;
-      // Refresh sidebar
-      fetchSessions();
+      // Refresh sidebar without auto-selecting
+      fetchSessions(false);
     }
 
     const currentImg = selectedImage;
@@ -334,7 +366,12 @@ User Context:
 - Current Phase: ${userCtx.phase || 'Unknown'}
 - Cycle Day: ${userCtx.dayOfCycle || 'Unknown'}
 - Cycle Length: ${userCtx.cycleLength || 'Unknown'}
-- Recent Symptoms: ${userCtx.recentSymptoms.length ? userCtx.recentSymptoms.join(', ') : 'None logged'}`;
+- User Goals: ${userCtx.goals.length ? userCtx.goals.join(', ') : 'None specified'}
+- Recent Logs: ${userCtx.recentLogsSummary}
+
+Only reference specific data points that are explicitly provided to you in this context. If the user asks about a time period or metric you don't have logged data for, say so honestly (e.g. 'You haven't logged much this week yet') rather than inventing plausible-sounding details. Never state a specific number, symptom, or value that wasn't given to you in this context.
+
+When discussing the user's logs and patterns, do not simply list back their data. Instead, provide helpful analysis, actionable suggestions, or comforting insights based on those patterns (e.g., how their phase might explain their energy dip, or a tip for hydration). If you observe data that seems highly irregular or concerning—such as extremely long continuous flow, severe pain, or highly erratic patterns—gently suggest that they might want to bring it up with a healthcare provider.`;
 
       const historyContext = messages
         .slice(-8)

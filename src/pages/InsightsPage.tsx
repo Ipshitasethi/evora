@@ -124,7 +124,8 @@ export function InsightsPage() {
         if (cycles.length >= 2) {
           setHasEnoughCycles(true);
           const totalCycleLen = cycles.reduce((acc, c) => acc + c.length, 0);
-          setAvgCycle(Math.round(totalCycleLen / cycles.length));
+          const computedAvgCycle = Math.round(totalCycleLen / cycles.length);
+          setAvgCycle(computedAvgCycle);
 
           const minC = Math.min(...cycles.map(c => c.length));
           const maxC = Math.max(...cycles.map(c => c.length));
@@ -167,6 +168,22 @@ export function InsightsPage() {
               text: `"${topSymptoms[0].name}" is your most frequently logged symptom.`,
               bg: "bg-lavender/30",
               border: "border-lavender/40"
+            });
+          }
+
+          if (computedAvgCycle < 21) {
+            newPatterns.push({
+              icon: <Activity size={18} className="text-coral" />,
+              text: `Your recent cycles have been shorter than typical (${computedAvgCycle} days average) — this can be worth tracking and mentioning at your next check-up.`,
+              bg: 'bg-coral/10',
+              border: 'border-coral/20'
+            });
+          } else if (computedAvgCycle > 45) {
+            newPatterns.push({
+              icon: <Activity size={18} className="text-coral" />,
+              text: `Your recent cycles have been longer than typical (${computedAvgCycle} days average) — this can be worth tracking and mentioning at your next check-up.`,
+              bg: 'bg-coral/10',
+              border: 'border-coral/20'
             });
           }
 
