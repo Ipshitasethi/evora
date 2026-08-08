@@ -301,10 +301,6 @@ export function OnboardingPage({ isEmbedded = false, onComplete }: OnboardingPag
               setErrors((e2) => ({ ...e2, lastPeriodStart: undefined }));
             }}
           />
-          <CalendarDays
-            size={18}
-            className="absolute right-4 top-1/2 -translate-y-1/2 text-plum/35 pointer-events-none"
-          />
         </div>
         <div className="mt-3 text-center">
           <button 
