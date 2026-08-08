@@ -1,5 +1,6 @@
 import { motion } from 'framer-motion';
 import { useMemo, useState, useRef, useEffect } from 'react';
+import { addDays, format } from 'date-fns';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 export interface CycleWheelProps {
@@ -195,6 +196,12 @@ export function CycleWheel({ lastPeriodStart, avgCycleLength, periodLength, curr
   const displayDay = previewDay !== null ? previewDay : effectiveDay;
   const currentPhase = useMemo(() => getCurrentPhase(displayDay, phases), [displayDay, phases]);
 
+  const displayDateStr = useMemo(() => {
+    if (previewDay === null && currentDateStr) return currentDateStr;
+    const diff = displayDay - today;
+    return format(addDays(new Date(), diff), 'EEEE, do');
+  }, [displayDay, today, previewDay, currentDateStr]);
+
   // Handle Dragging
   const handlePointerDown = (e: React.PointerEvent) => {
     setIsDragging(true);
@@ -346,7 +353,7 @@ export function CycleWheel({ lastPeriodStart, avgCycleLength, periodLength, curr
           </span>
 
           <span className="text-[10px] uppercase tracking-wider font-bold text-plum/30 mt-1">
-            {currentDateStr || 'Today'}
+            {displayDateStr}
           </span>
         </div>
       </div>

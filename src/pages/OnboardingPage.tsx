@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, ArrowRight, Check, CalendarDays, Info } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Check, Info } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient';
 import { useAuth } from '../context/AuthContext';
 import { EvoraLogo } from '../components/ui/EvoraLogo';
