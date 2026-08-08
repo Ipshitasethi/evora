@@ -13,6 +13,42 @@ export interface Cycle {
   month: string;
 }
 
+export type CyclePhase = 'Menstrual' | 'Follicular' | 'Ovulation' | 'Luteal';
+
+/**
+ * Calculates phase boundaries based on the clinical standard:
+ * Ovulation Day = Cycle Length - 14.
+ * Luteal phase is a fixed ~14 days.
+ */
+export function getPhaseBoundaries(cycleLen: number, periodLen: number = 5) {
+  const ovulationDay = Math.max(periodLen + 1, cycleLen - 14);
+  const ovulationWindow = Math.max(1, Math.floor(cycleLen * 0.07));
+  const ovulationStart = Math.max(periodLen + 1, ovulationDay - Math.floor(ovulationWindow / 2));
+  const ovulationEnd = ovulationStart + ovulationWindow - 1;
+
+  return {
+    menstrualEnd: periodLen,
+    follicularStart: periodLen + 1,
+    follicularEnd: ovulationStart - 1,
+    ovulationStart,
+    ovulationEnd,
+    lutealStart: ovulationEnd + 1,
+    lutealEnd: cycleLen
+  };
+}
+
+/**
+ * Returns the current cycle phase based on day of cycle.
+ */
+export function getCyclePhase(dayOfCycle: number, cycleLen: number, periodLen: number = 5): CyclePhase {
+  const bounds = getPhaseBoundaries(cycleLen, periodLen);
+  
+  if (dayOfCycle <= bounds.menstrualEnd) return 'Menstrual';
+  if (dayOfCycle <= bounds.follicularEnd) return 'Follicular';
+  if (dayOfCycle <= bounds.ovulationEnd) return 'Ovulation';
+  return 'Luteal';
+}
+
 /**
  * Parses raw period logs into contiguous periods and full cycles.
  */

@@ -4,6 +4,7 @@ import { Send, Sparkles, Plus, MessageSquare, Menu, X, Trash2, Mic, Image as Ima
 import { supabase } from '../lib/supabaseClient';
 import { useAuth } from '../context/AuthContext';
 import { differenceInDays, parseISO } from 'date-fns';
+import { getCyclePhase } from '../lib/cycleUtils';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface Message {
@@ -28,12 +29,7 @@ export interface UserContext {
 
 // ─── Phase calc ───────────────────────────────────────────────────────────────
 function getPhase(day: number, periodLen: number, cycleLen: number): string {
-  const follicularEnd = Math.floor(cycleLen * 0.46);
-  const ovulationEnd = follicularEnd + Math.max(1, Math.floor(cycleLen * 0.07));
-  if (day <= periodLen) return 'Menstrual';
-  if (day <= follicularEnd) return 'Follicular';
-  if (day <= ovulationEnd) return 'Ovulation';
-  return 'Luteal';
+  return getCyclePhase(day, cycleLen, periodLen);
 }
 
 // ─── Mock responses ───────────────────────────────────────────────────────────

@@ -25,6 +25,7 @@ import { DailyCheckIn } from '../components/dashboard/DailyCheckIn';
 import { LogModal } from '../components/ui/LogModal';
 
 import { differenceInCalendarDays, addDays, format, parseISO, startOfDay } from 'date-fns';
+import { getCyclePhase } from '../lib/cycleUtils';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface CycleSettings {
@@ -58,12 +59,7 @@ function getDailyInsight(phase: string | null): string {
 }
 
 function getPhase(day: number, periodLen: number, cycleLen: number) {
-  const follicularEnd = Math.floor(cycleLen * 0.46);
-  const ovulationEnd = follicularEnd + Math.max(1, Math.floor(cycleLen * 0.07));
-  if (day <= periodLen) return 'Menstrual';
-  if (day <= follicularEnd) return 'Follicular';
-  if (day <= ovulationEnd) return 'Ovulation';
-  return 'Luteal';
+  return getCyclePhase(day, cycleLen, periodLen);
 }
 
 function calculateCycleMetrics(lastPeriodStr: string | null, avgCycle: number, avgPeriod: number) {

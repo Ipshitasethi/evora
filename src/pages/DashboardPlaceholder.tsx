@@ -19,7 +19,8 @@ import { supabase } from '../lib/supabaseClient';
 import { useAuth } from '../context/AuthContext';
 import { Navbar } from '../components/layout/Navbar';
 import { Button } from '../components/ui/Button';
-import { differenceInDays, addDays, format, parseISO } from 'date-fns';
+import { addDays, format, parseISO, differenceInDays } from 'date-fns';
+import { getCyclePhase } from '../lib/cycleUtils';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface CycleSettings {
@@ -34,12 +35,14 @@ interface Profile {
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
-function getCyclePhase(dayOfCycle: number, periodLen: number, cycleLen: number) {
-  if (dayOfCycle <= periodLen) return { phase: 'Menstrual', emoji: '🌑', color: 'text-coral', bg: 'bg-coral/10' };
-  if (dayOfCycle <= 13) return { phase: 'Follicular', emoji: '🌒', color: 'text-plum', bg: 'bg-lavender/40' };
-  if (dayOfCycle <= 16) return { phase: 'Ovulation', emoji: '🌕', color: 'text-amber-600', bg: 'bg-amber-50' };
-  if (dayOfCycle <= cycleLen) return { phase: 'Luteal', emoji: '🌘', color: 'text-plum/70', bg: 'bg-sage/30' };
-  return { phase: 'Menstrual', emoji: '🌑', color: 'text-coral', bg: 'bg-coral/10' };
+function getCyclePhaseInfo(dayOfCycle: number, periodLen: number, cycleLen: number) {
+  const phase = getCyclePhase(dayOfCycle, cycleLen, periodLen);
+  switch (phase) {
+    case 'Menstrual': return { phase, emoji: '🌑', color: 'text-coral', bg: 'bg-coral/10' };
+    case 'Follicular': return { phase, emoji: '🌒', color: 'text-plum', bg: 'bg-lavender/40' };
+    case 'Ovulation': return { phase, emoji: '🌕', color: 'text-amber-600', bg: 'bg-amber-50' };
+    case 'Luteal': return { phase, emoji: '🌘', color: 'text-plum/70', bg: 'bg-sage/30' };
+  }
 }
 
 const PHASE_TIPS: Record<string, { energy: string; mood: string; tip: string }> = {
@@ -151,7 +154,7 @@ export function DashboardPlaceholder() {
     : null;
   const cycleLen = cycle?.avg_cycle_length ?? 28;
   const periodLen = cycle?.avg_period_length ?? 5;
-  const phaseInfo = dayOfCycle ? getCyclePhase(dayOfCycle, periodLen, cycleLen) : null;
+  const phaseInfo = dayOfCycle ? getCyclePhaseInfo(dayOfCycle, periodLen, cycleLen) : null;
   const phaseTips = phaseInfo ? PHASE_TIPS[phaseInfo.phase] : null;
   const nextPeriod = cycle?.last_period_start
     ? addDays(parseISO(cycle.last_period_start), cycleLen)

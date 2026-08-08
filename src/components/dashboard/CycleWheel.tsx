@@ -30,14 +30,15 @@ function dayOfCycle(lastPeriodStart: Date, avgCycleLength: number): number {
   return (Math.max(0, diff) % avgCycleLength) + 1;
 }
 
+import { getPhaseBoundaries } from '../../lib/cycleUtils';
+
 function buildPhases(cycleLen: number, periodLen: number): PhaseArc[] {
-  const follicularEnd = Math.floor(cycleLen * 0.46);
-  const ovulationEnd = follicularEnd + Math.max(1, Math.floor(cycleLen * 0.07));
+  const bounds = getPhaseBoundaries(cycleLen, periodLen);
   return [
-    { name: 'Menstrual', startDay: 1, endDay: periodLen, color: 'rgb(var(--color-coral))', strokeColor: 'rgb(var(--color-coral))' },
-    { name: 'Follicular', startDay: periodLen + 1, endDay: follicularEnd, color: '#F2C464', strokeColor: '#F2C464' },
-    { name: 'Ovulation', startDay: follicularEnd + 1, endDay: ovulationEnd, color: '#D4829C', strokeColor: '#D4829C' },
-    { name: 'Luteal', startDay: ovulationEnd + 1, endDay: cycleLen, color: '#BEB4D4', strokeColor: '#BEB4D4' },
+    { name: 'Menstrual', startDay: 1, endDay: bounds.menstrualEnd, color: 'rgb(var(--color-coral))', strokeColor: 'rgb(var(--color-coral))' },
+    { name: 'Follicular', startDay: bounds.follicularStart, endDay: bounds.follicularEnd, color: '#F2C464', strokeColor: '#F2C464' },
+    { name: 'Ovulation', startDay: bounds.ovulationStart, endDay: bounds.ovulationEnd, color: '#D4829C', strokeColor: '#D4829C' },
+    { name: 'Luteal', startDay: bounds.lutealStart, endDay: bounds.lutealEnd, color: '#BEB4D4', strokeColor: '#BEB4D4' },
   ];
 }
 

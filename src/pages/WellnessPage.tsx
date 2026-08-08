@@ -5,6 +5,7 @@ import { Sparkles, Utensils, Brain, Activity, ArrowLeft } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient';
 import { useAuth } from '../context/AuthContext';
 import { differenceInDays, parseISO } from 'date-fns';
+import { getCyclePhase } from '../lib/cycleUtils';
 
 interface WellnessTip {
   id: string;
@@ -55,12 +56,9 @@ export function WellnessPage() {
       const lastPeriodStr: string | null = cycle?.last_period_start ?? null;
       let currentPhase = 'follicular';
       if (lastPeriodStr) {
-        const dayInCycle = differenceInDays(new Date(), parseISO(lastPeriodStr)) % cycleLen;
+        const dayInCycle = (differenceInDays(new Date(), parseISO(lastPeriodStr)) % cycleLen) + 1;
         const periodLen: number = cycle?.avg_period_length ?? 5;
-        if (dayInCycle < periodLen) currentPhase = 'menstrual';
-        else if (dayInCycle < 13) currentPhase = 'follicular';
-        else if (dayInCycle < 16) currentPhase = 'ovulation';
-        else currentPhase = 'luteal';
+        currentPhase = getCyclePhase(dayInCycle, cycleLen, periodLen).toLowerCase();
       }
       setPhase(currentPhase);
 
